@@ -1,0 +1,60 @@
+{
+  "name": "AX-6242600",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "node src/test/testConnection.js",
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "seed": "node seed.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
+    "axios": "^1.10.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "body-parser": "^2.2.0",
+    "cloudinary": "^2.8.0",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-async-handler": "^1.2.0",
+    "express-list-endpoints": "^7.1.1",
+    "express-rate-limit": "^7.5.1",
+    "geoip-lite": "^1.4.10",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "http": "^0.0.1-security",
+    "imap": "^0.8.19",
+    "imap-simple": "^1.6.3",
+    "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.7.4",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.6.0",
+    "mongoose": "^8.16.2",
+    "multer": "^2.0.1",
+    "nodemailer": "^7.0.10",
+    "otp-generator": "^4.0.1",
+    "redis": "^5.8.0",
+    "socket.io": "^4.8.1",
+    "streamifier": "^0.1.1",
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amit-bitmax/chatcrmapi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/amit-bitmax/chatcrmapi/issues"
+  },
+  "homepage": "https://github.com/amit-bitmax/chatcrmapi#readme",
+  "description": ""
+}
