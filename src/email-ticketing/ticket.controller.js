@@ -775,7 +775,7 @@ exports.createTicketFromWidget = [
               ${html || message}
             </div>
             
-            <p><a href="https://btclienterminal.com/AX-6242600/" style="background: #007cba; color: white; padding: 10px 20px; text-decoration: none;">View in Dashboard</a></p>
+            <p><a href="https://btclienterminal.com/FMG/" style="background: #007cba; color: white; padding: 10px 20px; text-decoration: none;">View in Dashboard</a></p>
           </div>
         `,
             text: `New Support Ticket: ${ticketId}\\n\\nCustomer: ${
@@ -1050,13 +1050,13 @@ exports.replyToTicketFromWidget = [
                 ${html || message}
               </div>
               
-              <p style="margin: 20px 0;"><a href="https://btclienterminal.com/AX-6242600/" style="background: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View in Dashboard</a></p>
+              <p style="margin: 20px 0;"><a href="https://btclienterminal.com/FMG/" style="background: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View in Dashboard</a></p>
               
               <hr style="margin: 20px 0;">
               <p style="font-size: 12px; color: #666;">Please respond to this customer's inquiry.</p>
             </div>
           `,
-              text: `🔔 Customer Reply Alert\n\nTicket: ${ticket.ticketId}\nCustomer: ${ticket.customerName} (${ticket.customerEmail})\nSubject: ${ticket.subject}\nPriority: ${ticket.priority}\n\nCustomer's Reply:\n${message}\n\n⚡ Action Required: Please respond to this customer's inquiry.\n\nView Dashboard: https://btclienterminal.com/AX-6242600/`,
+              text: `🔔 Customer Reply Alert\n\nTicket: ${ticket.ticketId}\nCustomer: ${ticket.customerName} (${ticket.customerEmail})\nSubject: ${ticket.subject}\nPriority: ${ticket.priority}\n\nCustomer's Reply:\n${message}\n\n⚡ Action Required: Please respond to this customer's inquiry.\n\nView Dashboard: https://btclienterminal.com/FMG/`,
               headers,
               attachments,
             });

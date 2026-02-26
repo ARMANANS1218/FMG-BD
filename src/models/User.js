@@ -42,15 +42,6 @@ const UserSchema = new mongoose.Schema(
     mobile: {
       type: String,
       trim: true,
-      validate: {
-        validator: function (v) {
-          // Allow skip if null or if not customer
-          if (!v && this.role !== 'Customer') return true;
-          // UK Format: +44 followed by 10 digits
-          return /^\+44\d{10}$/.test(v);
-        },
-        message: props => `${props.value} is not a valid UK phone number (+44XXXXXXXXXX)`
-      }
     },
     alternatePhone: {
       type: String,
@@ -269,6 +260,8 @@ const UserSchema = new mongoose.Schema(
         'Check-in',
         'Meal / Seat',
         'Visa / Travel Advisory',
+        'Support',
+        'Supports', // Alternative spelling
         'Other', // Airline Specific
       ],
       default: null,

@@ -72,14 +72,14 @@ const prodHosts = [
   'https://crm-wdget-shyeyes-fd.vercel.app',
   'https://btclienterminal.com',
   'http://btclienterminal.com',
-  'https://btclienterminal.com/AX-6242600',
-  'http://btclienterminal.com/AX-6242600/',
+  'https://btclienterminal.com/FMG',
+  'http://btclienterminal.com/FMG/',
   'https://btclienterminal.com',
   'https://www.btclienterminal.com',
   'https://spartan-kanban.vercel.app',
   'https://kanban.btclienterminal.com',
 ];
-const pathVariants = (base) => [base, base + '/', base + '/AX-6242600', base + '/AX-6242600/'];
+const pathVariants = (base) => [base, base + '/', base + '/FMG', base + '/FMG/'];
 const shyeyesVariants = (base) => [base, base + '/', base + '/shyeyes', base + '/shyeyes/'];
 
 const allowedOrigins = [
