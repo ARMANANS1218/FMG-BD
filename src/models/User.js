@@ -42,6 +42,15 @@ const UserSchema = new mongoose.Schema(
     mobile: {
       type: String,
       trim: true,
+      validate: {
+        validator: function (v) {
+          // Allow skip if null or if not customer
+          if (!v && this.role !== 'Customer') return true;
+          // UK Format: +44 followed by 10 digits
+          return /^\+44\d{10}$/.test(v);
+        },
+        message: props => `${props.value} is not a valid UK phone number (+44XXXXXXXXXX)`
+      }
     },
     alternatePhone: {
       type: String,
@@ -98,6 +107,34 @@ const UserSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+
+    // ==================== FMCG UK CUSTOMER FIELDS ====================
+    preferredContactMethod: {
+      type: String,
+      enum: ['Chat', 'Email', 'Phone'],
+      default: 'Email',
+    },
+    customerType: {
+      type: String,
+      enum: ['End Consumer', 'Retailer', 'Distributor', 'Online Buyer'],
+      default: 'End Consumer',
+    },
+    vulnerableCustomerFlag: {
+      type: Boolean,
+      default: false, // UK Compliance
+    },
+    consentCaptured: {
+      isCaptured: { type: Boolean, default: false },
+      timestamp: { type: Date },
+      gdprStatementVersion: { type: String, default: '1.0' },
+    },
+    dataRetentionTimer: {
+      type: Number,
+      default: 6, // 6/12/20/24 months (Auto)
+      enum: [6, 12, 20, 24],
+    },
+    caseId: { type: String }, // For FMCG Case Mapping
+    contactId: { type: String }, // For FMCG Contact Mapping
 
     // Travel Preferences
     travelPreferences: {
@@ -162,7 +199,19 @@ const UserSchema = new mongoose.Schema(
       country: { type: String, default: null, trim: true },
       countryCode: { type: String, default: null, trim: true },
       stateCode: { type: String, default: null, trim: true },
-      postalCode: { type: String, default: null, trim: true },
+      postalCode: {
+        type: String,
+        default: null,
+        trim: true,
+        validate: {
+          validator: function (v) {
+            if (!v && this.role !== 'Customer') return true;
+            // UK Postcode Regex (simplified)
+            return /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i.test(v);
+          },
+          message: props => `${props.value} is not a valid UK postcode`
+        }
+      },
       landmark: { type: String, default: null, trim: true },
     },
 

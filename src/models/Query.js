@@ -84,11 +84,13 @@ const querySchema = new mongoose.Schema({
     ref: 'Organization',
     required: true
   },
-  
+
   petitionId: {
     type: String,
     required: true
   },
+  caseId: { type: String }, // FMCG Case ID (Auto)
+  contactId: { type: String }, // FMCG Contact ID (Auto)
   // Optional link to widget conversation (for guest chats)
   conversationId: {
     type: String,
@@ -110,7 +112,7 @@ const querySchema = new mongoose.Schema({
     required: true
   },
   customerPhone: String,
-  
+
   // ==================== GUEST CUSTOMER TRACKING ====================
   isGuestCustomer: {
     type: Boolean,
@@ -128,15 +130,18 @@ const querySchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  
+
   // 4. Query / Case Information
   category: {
     type: String,
-    enum: ['Booking', 'Cancellation', 'Reschedule', 'Refund', 'Baggage', 'Check-in', 'Meal / Seat', 'Visa / Travel Advisory', 'Other'],
+    enum: [
+      'Booking', 'Cancellation', 'Reschedule', 'Refund', 'Baggage', 'Check-in', 'Meal / Seat', 'Visa / Travel Advisory', 'Other', // Legacy Airline
+      'Quality Issue', 'Damaged Product', 'Missing Item', 'Expired Product', 'Allergy Concern', 'Packaging Issue', 'Refund Request', 'Replacement Request', 'General Inquiry' // FMCG
+    ],
     default: 'Other'
   },
   subCategory: {
-    type: String, // e.g., "Excess Baggage", "Meal Preference"
+    type: String,
     trim: true,
     default: null
   },
@@ -147,13 +152,104 @@ const querySchema = new mongoose.Schema({
   },
   priority: {
     type: String,
-    enum: ['Low', 'Medium', 'High', 'Urgent'],
+    enum: ['Low', 'Medium', 'High', 'Urgent', 'Critical - Food Safety'], // Added Critical
     default: 'Medium'
+  },
+  severityLevel: {
+    type: String,
+    enum: ['Low', 'Medium', 'High', 'Critical - Food Safety'],
+    default: 'Low'
+  },
+  healthAndSafetyRisk: {
+    type: Boolean,
+    default: false
+  },
+  regulatoryRiskFlag: {
+    type: Boolean,
+    default: false // FSA related
+  },
+  escalationRequired: {
+    type: Boolean,
+    default: false
   },
   status: {
     type: String,
-    enum: ['Pending', 'Open', 'Accepted', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Transferred'], // Added 'Accepted' for workflow
+    enum: [
+      'Pending', 'Open', 'Accepted', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Transferred',
+      'Pending Customer', 'Pending Internal', 'Escalated' // New statuses
+    ],
     default: 'Pending'
+  },
+
+  // ==================== FMCG PRODUCT INFORMATION ====================
+  productInfo: {
+    productName: { type: String, trim: true }, // Dropdown - Master SKU list
+    brand: { type: String, trim: true },
+    skuCode: { type: String, trim: true },
+    batchLotNumber: { type: String, trim: true },
+    expiryDate: { type: Date },
+    manufacturingDate: { type: Date },
+    purchaseDate: { type: Date },
+    purchaseChannel: {
+      type: String,
+      enum: ['Tesco', 'Sainsbury’s', 'Amazon UK', 'Direct Website', 'Other'],
+      default: 'Other'
+    },
+    orderNumber: { type: String, trim: true },
+    storeLocation: { type: String, trim: true },
+    quantityPurchased: { type: Number, default: 0 },
+    quantityAffected: { type: Number, default: 0 },
+    productCategory: {
+      type: String,
+      enum: ['Food', 'Beverage', 'Personal Care', 'Household'],
+      default: 'Food'
+    }
+  },
+
+  // ==================== CHAT INTERACTION METRICS ====================
+  interactionMetrics: {
+    channel: { type: String, enum: ['Web Chat', 'WhatsApp', 'Social', 'In-App'], default: 'Web Chat' },
+    firstResponseTime: { type: Number }, // seconds (Auto)
+    averageResponseTime: { type: Number }, // seconds (Auto)
+    chatDuration: { type: Number }, // seconds (Auto)
+    holdTime: { type: Number }, // seconds (Auto)
+    numberOfTransfers: { type: Number, default: 0 },
+    slaClock: { type: Date }, // Auto
+    resolutionType: {
+      type: String,
+      enum: ['Refund', 'Replacement', 'Voucher', 'Information Provided', 'Escalated'],
+      default: 'Information Provided'
+    },
+    compensationType: { type: String, trim: true },
+    courierRequired: { type: Boolean, default: false },
+    returnLabelSent: { type: Boolean, default: false },
+    csatSent: { type: Boolean, default: false },
+    csatScore: { type: Number, min: 1, max: 5 }
+  },
+
+  // ==================== INTERNAL ESCALATION ====================
+  escalationDetails: {
+    escalatedTo: {
+      type: String,
+      enum: ['QA', 'Team Leader', 'Quality Team', 'Supply Chain', 'Legal'],
+      default: null
+    },
+    escalationDate: { type: Date },
+    rootCauseCategory: { type: String, trim: true },
+    correctiveActionTaken: { type: String, trim: true },
+    fsaNotificationRequired: { type: Boolean, default: false },
+    linkedCases: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Query' }] // Batch Issue Mapping
+  },
+
+  // ==================== GDPR & COMPLIANCE (UK Mandatory) ====================
+  compliance: {
+    dataRetentionTimer: { type: Number, default: 6 }, // 6/12/24 months
+    consentTimestamp: { type: Date },
+    dataDeletionRequest: { type: Boolean, default: false },
+    subjectAccessRequest: { type: Boolean, default: false },
+    refundApprovalAuthId: { type: String },
+    agentId: { type: String },
+    tlApprovalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' }
   },
 
   // 5. Action Taken by Agent
@@ -176,7 +272,7 @@ const querySchema = new mongoose.Schema({
   },
   refundAmount: {
     type: Number,
-    default: 0
+    default: 0 // GBP £
   },
   tatShared: {
     type: String, // e.g., "48 Hours"
@@ -249,7 +345,7 @@ const querySchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: function() {
+    default: function () {
       return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
     }
   },
@@ -270,7 +366,7 @@ const querySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Normalize string timestamps (legacy records saved with formatted string) to Date objects on retrieval
-querySchema.post('init', function(doc) {
+querySchema.post('init', function (doc) {
   const tryParse = (val) => {
     if (!val) return null;
     if (val instanceof Date) return val;
@@ -288,7 +384,7 @@ querySchema.post('init', function(doc) {
     return null;
   };
 
-  ['createdAt','updatedAt','lastActivityAt','resolvedAt','assignedAt','expiresAt'].forEach(f => {
+  ['createdAt', 'updatedAt', 'lastActivityAt', 'resolvedAt', 'assignedAt', 'expiresAt'].forEach(f => {
     const parsed = tryParse(doc[f]);
     if (parsed) doc[f] = parsed;
   });
@@ -313,7 +409,7 @@ querySchema.index({ category: 1 });
 querySchema.index({ createdAt: -1 });
 
 // Middleware to update lastActivityAt on new messages
-querySchema.pre('save', function(next) {
+querySchema.pre('save', function (next) {
   if (this.isModified('messages')) {
     this.lastActivityAt = new Date();
   }

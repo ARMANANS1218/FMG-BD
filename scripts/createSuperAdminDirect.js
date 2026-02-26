@@ -7,11 +7,11 @@ const createSuperAdmin = async () => {
   try {
     // MongoDB connection
     const MONGO_URI = process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/chat-crm';
-    
+
     console.log('\n═══════════════════════════════════════');
     console.log('   CREATE SUPERADMIN USER');
     console.log('═══════════════════════════════════════\n');
-    
+
     console.log('📡 Connecting to MongoDB Atlas...');
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB\n');
@@ -31,7 +31,7 @@ const createSuperAdmin = async () => {
       name: 'Super Admin Arman',
       email: 'arman.bitmax@gmail.com',
       password: 'An183890@#',
-      mobile: '+1234567890', // Optional
+      mobile: '+447123456789', // Optional
       role: 'SuperAdmin'
       // No organizationId for SuperAdmin
     };
@@ -58,7 +58,7 @@ const createSuperAdmin = async () => {
     console.log(`🔑 Password : An183890@#`);
     console.log(`🆔 Role     : ${superAdmin.role}`);
     console.log('═══════════════════════════════════════\n');
-    console.log('🚀 Next Steps:');
+    console.log('🚀 Next Steps:');  
     console.log('1. Login at: POST http://localhost:5000/api/v1/user/login');
     console.log('2. Create organizations via SuperAdmin API');
     console.log('3. Refer to QUICK_START_GUIDE.md for full workflow\n');
