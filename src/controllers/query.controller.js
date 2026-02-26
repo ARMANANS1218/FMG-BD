@@ -2,7 +2,9 @@ const Query = require('../models/Query');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const QueryEvaluation = require('../models/QueryEvaluation');
+const Organization = require('../models/Organization');
 const generatePetition = require('../utils/generatePetation');
+const moment = require('moment-timezone');
 
 // Helper: shape escalation chain from transferHistory
 function buildEscalationChain(query) {
@@ -41,6 +43,8 @@ exports.createQuery = async (req, res) => {
 
     const newQuery = await Query.create({
       petitionId,
+      caseId: petitionId, // Case ID is same as petitionId
+      contactId: customerId, // Contact ID is the User ID
       customer: customerId,
       customerName: customer.name,
       customerEmail: customer.email,
@@ -52,13 +56,13 @@ exports.createQuery = async (req, res) => {
       status: 'Pending',
       messages: initialMessage
         ? [
-            {
-              sender: customerId,
-              senderName: customer.name,
-              senderRole: 'Customer',
-              message: initialMessage,
-            },
-          ]
+          {
+            sender: customerId,
+            senderName: customer.name,
+            senderRole: 'Customer',
+            message: initialMessage,
+          },
+        ]
         : [],
     });
 
@@ -120,8 +124,7 @@ exports.createQuery = async (req, res) => {
         const socketUserId = socket.userId ? socket.userId.toString() : 'unknown';
 
         console.log(
-          `🔍 Checking socket: ${
-            socket.id
+          `🔍 Checking socket: ${socket.id
           } | User: ${socketUserId} | Target? ${targetUserIds.includes(socketUserId)}`
         );
 
@@ -250,7 +253,7 @@ exports.getAllQueries = async (req, res) => {
           if (f) parsed[f] = d === 'asc' ? 1 : -1;
         });
         if (Object.keys(parsed).length) sortSpec = parsed;
-      } catch (_) {}
+      } catch (_) { }
     }
     baseQuery.sort(sortSpec);
 
@@ -308,7 +311,7 @@ exports.getAllQueries = async (req, res) => {
     // Overall counts (without pagination slice) for UI summary
     let overallCounts;
     const userId = req.user?.id;
-    
+
     if (usePagination && transferTarget !== 'me') {
       // Query DB for counts quickly
       const [pendingCount, acceptedCount, resolvedCount, transferredCount] = await Promise.all([
@@ -320,7 +323,7 @@ exports.getAllQueries = async (req, res) => {
         Query.countDocuments({ ...filter, status: 'Resolved' }),
         Query.countDocuments({ ...filter, status: 'Transferred' }),
       ]);
-      
+
       // Calculate escalated count: queries where user is either fromAgent OR toAgent
       let escalatedCount = 0;
       if (userId) {
@@ -342,7 +345,7 @@ exports.getAllQueries = async (req, res) => {
         }).distinct('_id');
         escalatedCount = escalatedQueries.length;
       }
-      
+
       overallCounts = {
         total,
         pending: pendingCount,
@@ -367,7 +370,7 @@ exports.getAllQueries = async (req, res) => {
           return false;
         }).length;
       }
-      
+
       overallCounts = {
         total,
         pending: pending.length, // local slice
@@ -391,7 +394,7 @@ exports.getAllQueries = async (req, res) => {
           return false;
         }).length;
       }
-      
+
       overallCounts = {
         total,
         pending: pending.length,
@@ -406,11 +409,11 @@ exports.getAllQueries = async (req, res) => {
       status: true,
       pagination: usePagination
         ? {
-            page: pageNum,
-            limit: pageSize,
-            total,
-            pages: Math.ceil(total / pageSize),
-          }
+          page: pageNum,
+          limit: pageSize,
+          total,
+          pages: Math.ceil(total / pageSize),
+        }
         : null,
       data: {
         all: queries,
@@ -493,10 +496,10 @@ exports.getEscalationChain = async (req, res) => {
         currentStatus: query.status,
         activeAssignee: query.assignedTo
           ? {
-              id: query.assignedTo,
-              name: query.assignedToName,
-              role: query.assignedToRole,
-            }
+            id: query.assignedTo,
+            name: query.assignedToName,
+            role: query.assignedToRole,
+          }
           : null,
         chain,
         totalTransfers: chain.length,
@@ -631,6 +634,26 @@ exports.acceptQuery = async (req, res) => {
       query.assignedToName = agent.alias || agent.name;
       query.assignedToRole = agent.role;
       query.assignedAt = new Date();
+
+      // ==================== FMCG SLA TRACKING ====================
+      // Calculate First Response Time (FRT) in seconds
+      if (query.createdAt) {
+        const frtSeconds = Math.floor((new Date() - new Date(query.createdAt)) / 1000);
+        if (!query.interactionMetrics) query.interactionMetrics = {};
+        query.interactionMetrics.firstResponseTime = frtSeconds;
+
+        // Check for SLA Breach (default 60s if not found in Org)
+        const org = await Organization.findById(query.organizationId);
+        const frtLimit = org?.fmcgSettings?.slaTargets?.frt || 60;
+        if (frtSeconds > frtLimit) {
+          query.slaBreach = true;
+          query.autoTags.push('SLA Breach - FRT');
+        }
+
+        // Set SLA Clock for Resolution (Handle Time Target)
+        const ahtLimit = org?.fmcgSettings?.slaTargets?.aht || 600;
+        query.interactionMetrics.slaClock = new Date(Date.now() + ahtLimit * 1000);
+      }
     }
 
     // ========== ACCUMULATE ACTIVE TIME BEFORE GOING BUSY ==========
@@ -672,18 +695,16 @@ exports.acceptQuery = async (req, res) => {
         sender: agentId,
         senderName: 'System',
         senderRole: 'System',
-        message: `Transfer from ${latestTransferMsg.fromAgentName} accepted by ${
-          agent.alias || agent.name
-        }`,
+        message: `Transfer from ${latestTransferMsg.fromAgentName} accepted by ${agent.alias || agent.name
+          }`,
       });
     } else if (latestTransferMsg && latestTransferMsg.status === 'Accepted') {
       query.messages.push({
         sender: agentId,
         senderName: 'System',
         senderRole: 'System',
-        message: `Transferred by ${latestTransferMsg.fromAgentName}; now handled by ${
-          agent.alias || agent.name
-        }`,
+        message: `Transferred by ${latestTransferMsg.fromAgentName}; now handled by ${agent.alias || agent.name
+          }`,
       });
     } else {
       query.messages.push({
@@ -1332,6 +1353,47 @@ exports.expireOldQueries = async () => {
   }
 };
 
+/**
+ * Handle GDPR Data Retention (Automatic Cleanup)
+ * Retention logic: 6/12/24 months based on compliance.dataRetentionTimer
+ */
+exports.handleGdprDataRetention = async () => {
+  try {
+    const now = new Date();
+
+    // Find customers whose data retention period has passed
+    // We'll mask/anonymize data instead of hard deletion to maintain reporting integrity
+    const customersToAnonymize = await User.find({
+      role: 'Customer',
+      lastUpdatedDate: { $lt: moment().subtract(6, 'months').toDate() } // Default 6 months check
+    });
+
+    let count = 0;
+    for (const customer of customersToAnonymize) {
+      const retentionMonths = customer.dataRetentionTimer || 6;
+      const expiryDate = moment(customer.lastUpdatedDate).add(retentionMonths, 'months').toDate();
+
+      if (expiryDate < now) {
+        // Anonymize personal info
+        customer.name = 'GDPR Anonymized';
+        customer.email = `anonymized_${customer._id}@fmcg-support.uk`;
+        customer.mobile = '+440000000000';
+        customer.address = { street: 'Anonymized', city: 'Anonymized' };
+        customer.isBlocked = true;
+        customer.blockedReason = 'GDPR Data Retention Expired';
+        await customer.save();
+        count++;
+      }
+    }
+
+    console.log(`GDPR Cleanup: Anonymized ${count} customer records.`);
+    return count;
+  } catch (error) {
+    console.error('GDPR Retention Error:', error);
+    throw error;
+  }
+};
+
 // Reopen expired or resolved query
 exports.reopenQuery = async (req, res) => {
   try {
@@ -1408,11 +1470,22 @@ exports.updateQueryDetails = async (req, res) => {
       category,
       subCategory,
       priority,
-      bookingId, // Expected to be ObjectID from frontend if selected
-      pnr,       // Alternatively, PNR string to lookup
+      bookingId,
       subject,
       concernDescription,
-      status
+      status,
+      // FMCG Fields
+      severityLevel,
+      healthAndSafetyRisk,
+      regulatoryRiskFlag,
+      escalationRequired,
+      productInfo,
+      interactionMetrics,
+      escalationDetails,
+      compliance,
+      refundAmount,
+      remarks,
+      tatShared
     } = req.body;
 
     // Check authorization
@@ -1425,39 +1498,59 @@ exports.updateQueryDetails = async (req, res) => {
       return res.status(404).json({ status: false, message: 'Query not found' });
     }
 
-    // Update Fields
+    // Update Basic Fields
     if (category) query.category = category;
     if (subCategory !== undefined) query.subCategory = subCategory;
     if (priority) query.priority = priority;
     if (subject) query.subject = subject;
     if (concernDescription !== undefined) query.concernDescription = concernDescription;
-    
-    // Allow status update if specifically requested (e.g. putting on 'Hold')
-    // But usually status is managed by workflow (Accept, Resolve).
-    // Avoid overriding workflow statuses accidentally.
-    if (status && ['Pending', 'Accepted', 'In Progress', 'Hold'].includes(status)) {
-        query.status = status;
+    if (remarks !== undefined) query.remarks = remarks;
+    if (tatShared !== undefined) query.tatShared = tatShared;
+    if (refundAmount !== undefined) query.refundAmount = refundAmount;
+
+    // FMCG Specific Logic
+    if (severityLevel) query.severityLevel = severityLevel;
+    if (healthAndSafetyRisk !== undefined) query.healthAndSafetyRisk = healthAndSafetyRisk;
+    if (regulatoryRiskFlag !== undefined) query.regulatoryRiskFlag = regulatoryRiskFlag;
+    if (escalationRequired !== undefined) query.escalationRequired = escalationRequired;
+
+    // Nested Objects Update (Merging)
+    if (productInfo) {
+      query.productInfo = { ...query.productInfo, ...productInfo };
+    }
+    if (interactionMetrics) {
+      query.interactionMetrics = { ...query.interactionMetrics, ...interactionMetrics };
+    }
+    if (escalationDetails) {
+      query.escalationDetails = { ...query.escalationDetails, ...escalationDetails };
+    }
+    if (compliance) {
+      query.compliance = { ...query.compliance, ...compliance };
     }
 
-    // Handle Booking Linking
+    // ==================== REFUND APPROVAL WORKFLOW ====================
+    if (refundAmount !== undefined) {
+      const org = await Organization.findById(query.organizationId);
+      const threshold = org?.fmcgSettings?.refundThreshold || 50;
+
+      if (refundAmount > threshold) {
+        if (!query.compliance) query.compliance = {};
+        query.compliance.tlApprovalStatus = 'Pending';
+        query.status = 'Pending Internal'; // Move to pending internal for approval
+        query.autoTags.push('High Refund - TL Approval Req');
+      }
+    }
+
+    // Status management
+    if (status && ['Pending', 'Accepted', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Transferred', 'Pending Customer', 'Pending Internal', 'Escalated'].includes(status)) {
+      query.status = status;
+    }
+
+    // Handle Booking Linking (Legacy)
     if (bookingId) {
-      // Validate Booking ID
       const booking = await Booking.findById(bookingId);
       if (booking) {
         query.bookingId = booking._id;
-      }
-    } else if (pnr) {
-      // Lookup Booking by PNR
-      const booking = await Booking.findOne({
-        pnr: pnr.toUpperCase(),
-        organizationId: query.organizationId
-      });
-      if (booking) {
-        query.bookingId = booking._id;
-      } else {
-        // Option: return warning or just ignore?
-        // returning warning is better for UI
-        // But for now we just don't link it.
       }
     }
 

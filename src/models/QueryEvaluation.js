@@ -1,30 +1,43 @@
 const mongoose = require('mongoose');
 
-// Weight map (percentage-based as per client requirements)
-// Chat Handling: 55%, Soft Skills: 20%, System & Compliance: 15%, Documentation: 10%
-// TOTAL: 100%
+// 2. QC PARAMETERS – AGENT (QUALITY MONITORING - CHAT)
+// Scorecard (100 Marks)
 const WEIGHTS = {
-  // Chat Handling Parameters (55%)
-  greeting: 5,              // Greeting & Introduction
-  probing: 10,              // Probing & Understanding Issue
-  accuracy: 15,             // Accuracy of Information Provided
-  resolution: 10,           // Resolution / FCR
-  processAdherence: 10,     // Adherence to Process/CRM Updates
-  compliance: 5,            // Compliance / Policy Adherence (reduced from 10% to fit 55% total)
-  closure: 0,               // Closure & Summary (removed to fit 55% total)
-  
-  // Soft Skills / Communication (20%)
-  grammar: 5,               // Grammar, Spelling, and Sentence Formation
-  tone: 5,                  // Tone & Empathy
-  personalization: 5,       // Personalization & Human Touch
-  flow: 5,                  // Chat Flow & Response Time
-  
-  // System & Process Compliance (15%)
-  toolEfficiency: 7.5,      // Tool Navigation Efficiency
-  escalation: 7.5,          // Transfer / Escalation Handling
-  
-  // Documentation (10%)
-  documentation: 10,        // Overall documentation quality
+  // Compliance (20%)
+  gdprStatementUsed: 5,     // GDPR statement used correctly
+  noDataLeakage: 5,         // No data leakage
+  properVerification: 5,    // Proper verification
+  refundAuthCheck: 5,       // Correct refund authorization
+
+  // Communication Skills (20%)
+  professionalTone: 5,      // Professional tone
+  ukGrammarSpelling: 5,     // UK grammar & spelling
+  empathyStatement: 5,      // Empathy statement used
+  resolutionExplanation: 5, // Clear resolution explanation
+
+  // Product & Process Knowledge (15%)
+  correctClassification: 4, // Correct classification
+  correctCompensation: 4,   // Correct compensation applied
+  properBatchCapture: 4,    // Proper batch capture
+  accurateTagging: 3,       // Accurate tagging
+
+  // SLA & Efficiency (15%)
+  frtWithinSla: 4,          // First Response Time within SLA
+  ahtWithinBenchmark: 4,    // AHT within benchmark
+  noUnnecessaryHolds: 4,    // No unnecessary holds
+  properCaseClosure: 3,     // Proper case closure
+
+  // Resolution Quality (20%)
+  rootCauseTagging: 5,      // Correct root cause tagging
+  completeDocumentation: 5, // Complete documentation
+  noRepeatContact: 5,       // No repeat contact
+  csatImpact: 5,            // CSAT impact
+
+  // Soft Skills (10%)
+  empathy: 2.5,             // Empathy
+  ownership: 2.5,           // Ownership
+  reassurance: 2.5,         // Reassurance
+  deEscalation: 2.5,        // De-escalation
 };
 
 const metricSchema = new mongoose.Schema({
@@ -42,25 +55,36 @@ const queryEvaluationSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
 
   // Metrics (percentage-based 0-100%)
-  // Chat Handling Parameters
-  greeting: metricSchema,
-  probing: metricSchema,
-  accuracy: metricSchema,
-  resolution: metricSchema,
-  processAdherence: metricSchema,
-  compliance: metricSchema,
-  closure: metricSchema,
-  // Soft Skills / Communication
-  grammar: metricSchema,
-  tone: metricSchema,
-  personalization: metricSchema,
-  flow: metricSchema,
-  // System & Process Compliance
-  toolEfficiency: metricSchema,
-  tagging: metricSchema,
-  escalation: metricSchema,
-  // Documentation
-  documentation: metricSchema,
+  // Compliance
+  gdprStatementUsed: metricSchema,
+  noDataLeakage: metricSchema,
+  properVerification: metricSchema,
+  refundAuthCheck: metricSchema,
+  // Communication
+  professionalTone: metricSchema,
+  ukGrammarSpelling: metricSchema,
+  empathyStatement: metricSchema,
+  resolutionExplanation: metricSchema,
+  // Knowledge
+  correctClassification: metricSchema,
+  correctCompensation: metricSchema,
+  properBatchCapture: metricSchema,
+  accurateTagging: metricSchema,
+  // SLA
+  frtWithinSla: metricSchema,
+  ahtWithinBenchmark: metricSchema,
+  noUnnecessaryHolds: metricSchema,
+  properCaseClosure: metricSchema,
+  // Resolution
+  rootCauseTagging: metricSchema,
+  completeDocumentation: metricSchema,
+  noRepeatContact: metricSchema,
+  csatImpact: metricSchema,
+  // Soft Skills
+  empathy: metricSchema,
+  ownership: metricSchema,
+  reassurance: metricSchema,
+  deEscalation: metricSchema,
 
   totalWeightedScore: { type: Number, default: 0 }, // 0-100
   performanceCategory: { type: String, enum: ['Very Poor', 'Poor', 'Average', 'Good', 'Excellent'], default: 'Very Poor' },
@@ -73,7 +97,7 @@ const queryEvaluationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Pre-save compute total weighted score (percentage-based)
-queryEvaluationSchema.pre('save', function(next) {
+queryEvaluationSchema.pre('save', function (next) {
   let total = 0;
 
   Object.entries(WEIGHTS).forEach(([key, weight]) => {
@@ -95,7 +119,7 @@ queryEvaluationSchema.pre('save', function(next) {
   });
 
   this.totalWeightedScore = Number(total.toFixed(2));
-  
+
   // Determine performance category based on score
   if (this.totalWeightedScore >= 81) {
     this.performanceCategory = 'Excellent';
@@ -108,7 +132,7 @@ queryEvaluationSchema.pre('save', function(next) {
   } else {
     this.performanceCategory = 'Very Poor';
   }
-  
+
   // Keep Pass/Fail for backward compatibility
   this.result = this.totalWeightedScore >= (this.passThreshold || 80) ? 'Pass' : 'Fail';
   next();
