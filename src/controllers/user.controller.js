@@ -382,32 +382,34 @@ exports.loginUser = async (req, res) => {
 
     console.log('Sanitized Login Inputs:', { empId, cleanEmail });
 
-    // 🔹 Check if this is a SuperAdmin login (email only)
-    if (!empId && cleanEmail) {
-      console.log('Attempting SuperAdmin login with email only');
+    // 🔹 If no email provided at all, reject immediately
+    if (!cleanEmail) {
+      return res.status(400).json({ status: false, message: 'Email is required.' });
+    }
+
+    // 🔹 Case 1: Email only (no employee_id) → try SuperAdmin login first, then email-only login
+    if (!empId) {
+      console.log('Attempting login with email only');
+      // Try SuperAdmin first
       user = await User.findOne({
         email: { $regex: new RegExp(`^${cleanEmail}$`, 'i') },
         role: 'SuperAdmin',
       });
-
       if (user) {
         console.log('✅ SuperAdmin found by email');
       } else {
-        console.log('❌ No SuperAdmin found with this email');
+        // Also try Admin login by email only
+        user = await User.findOne({
+          email: { $regex: new RegExp(`^${cleanEmail}$`, 'i') },
+          role: 'Admin',
+        });
+        if (user) console.log('✅ Admin found by email');
+        else console.log('❌ No user found with email only');
       }
     }
 
-    // 🔹 If not SuperAdmin, both employee_id AND email are required
-    if (!user) {
-      if (!empId || !cleanEmail) {
-        console.log('❌ Missing required fields - both employee_id and email are required');
-        return res.status(400).json({
-          status: false,
-          message: 'Both Employee ID and Email are required for login.',
-        });
-      }
-
-      // Search for user where BOTH employee_id AND email match (case-insensitive email)
+    // 🔹 Case 2: Both employee_id AND email provided → search any role
+    if (!user && empId && cleanEmail) {
       console.log('Searching by both employee_id AND email:', { empId, cleanEmail });
       user = await User.findOne({
         employee_id: empId,
