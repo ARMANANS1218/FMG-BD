@@ -89,8 +89,16 @@ const querySchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  caseId: { type: String }, // FMCG Case ID (Auto)
-  contactId: { type: String }, // FMCG Contact ID (Auto)
+  caseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Case',
+    default: null
+  }, // Reference to FMCG Case
+  contactId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Customer',
+    default: null
+  }, // Reference to FMCG Customer
   // Optional link to widget conversation (for guest chats)
   conversationId: {
     type: String,
@@ -181,76 +189,46 @@ const querySchema = new mongoose.Schema({
     default: 'Pending'
   },
 
-  // ==================== FMCG PRODUCT INFORMATION ====================
-  productInfo: {
-    productName: { type: String, trim: true }, // Dropdown - Master SKU list
-    brand: { type: String, trim: true },
-    skuCode: { type: String, trim: true },
-    batchLotNumber: { type: String, trim: true },
-    expiryDate: { type: Date },
-    manufacturingDate: { type: Date },
-    purchaseDate: { type: Date },
-    purchaseChannel: {
-      type: String,
-      enum: ['Tesco', 'Sainsbury’s', 'Amazon UK', 'Direct Website', 'Other'],
-      default: 'Other'
-    },
-    orderNumber: { type: String, trim: true },
-    storeLocation: { type: String, trim: true },
-    quantityPurchased: { type: Number, default: 0 },
-    quantityAffected: { type: Number, default: 0 },
-    productCategory: {
-      type: String,
-      enum: ['Food', 'Beverage', 'Personal Care', 'Household'],
-      default: 'Food'
-    }
+  // ==================== FMCG REFERENCES ====================
+  // Replacing embedded objects with references to the new FMCG Collections
+  chatLogId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatLog',
+    default: null
   },
-
-  // ==================== CHAT INTERACTION METRICS ====================
-  interactionMetrics: {
-    channel: { type: String, enum: ['Web Chat', 'WhatsApp', 'Social', 'In-App'], default: 'Web Chat' },
-    firstResponseTime: { type: Number }, // seconds (Auto)
-    averageResponseTime: { type: Number }, // seconds (Auto)
-    chatDuration: { type: Number }, // seconds (Auto)
-    holdTime: { type: Number }, // seconds (Auto)
-    numberOfTransfers: { type: Number, default: 0 },
-    slaClock: { type: Date }, // Auto
-    resolutionType: {
-      type: String,
-      enum: ['Refund', 'Replacement', 'Voucher', 'Information Provided', 'Escalated'],
-      default: 'Information Provided'
-    },
-    compensationType: { type: String, trim: true },
-    courierRequired: { type: Boolean, default: false },
-    returnLabelSent: { type: Boolean, default: false },
-    csatSent: { type: Boolean, default: false },
-    csatScore: { type: Number, min: 1, max: 5 }
+  escalationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Escalation',
+    default: null
   },
-
-  // ==================== INTERNAL ESCALATION ====================
-  escalationDetails: {
-    escalatedTo: {
-      type: String,
-      enum: ['QA', 'Team Leader', 'Quality Team', 'Supply Chain', 'Legal'],
-      default: null
-    },
-    escalationDate: { type: Date },
-    rootCauseCategory: { type: String, trim: true },
-    correctiveActionTaken: { type: String, trim: true },
-    fsaNotificationRequired: { type: Boolean, default: false },
-    linkedCases: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Query' }] // Batch Issue Mapping
+  complianceLogId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ComplianceLog',
+    default: null
   },
-
-  // ==================== GDPR & COMPLIANCE (UK Mandatory) ====================
-  compliance: {
-    dataRetentionTimer: { type: Number, default: 6 }, // 6/12/24 months
-    consentTimestamp: { type: Date },
-    dataDeletionRequest: { type: Boolean, default: false },
-    subjectAccessRequest: { type: Boolean, default: false },
-    refundApprovalAuthId: { type: String },
-    agentId: { type: String },
-    tlApprovalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' }
+  qaReviewId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'QaReview',
+    default: null
   },
+  refundId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Refund',
+    default: null
+  },
+  csatFeedbackId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CsatFeedback',
+    default: null
+  },
+  slaTrackerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SlaTracker',
+    default: null
+  },
+  refundApprovalAuthId: { type: String },
+  agentId: { type: String },
+  tlApprovalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
 
   // 5. Action Taken by Agent
   actionType: {
