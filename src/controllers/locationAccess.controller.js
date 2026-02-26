@@ -4,14 +4,14 @@ const LocationAccessSession = require('../models/LocationAccessSession');
 const { v4: uuidv4 } = require('uuid');
 
 // Support multiple frontend URLs
-const FRONTEND_BASE_URL = process.env.FRONTEND_URL || 'https://btclienterminal.com/AX-6242600';
+const FRONTEND_BASE_URL = process.env.FRONTEND_URL || 'https://btclienterminal.com/FMG';
 const FRONTEND_URLS = {
-  primary: FRONTEND_BASE_URL.includes('AX-6242600')
+  primary: FRONTEND_BASE_URL.includes('FMG')
     ? FRONTEND_BASE_URL
-    : `${FRONTEND_BASE_URL}/AX-6242600`,
-  vercel: 'https://live-chat-crm.vercel.app/AX-6242600',
-  localhost: 'http://localhost:5173/AX-6242600',
-  production: 'https://btclienterminal.com/AX-6242600',
+    : `${FRONTEND_BASE_URL}/FMG`,
+  vercel: 'https://live-chat-crm.vercel.app/FMG',
+  localhost: 'http://localhost:5173/FMG',
+  production: 'https://btclienterminal.com/FMG',
 };
 
 // Haversine distance in meters
