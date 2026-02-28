@@ -1,5 +1,5 @@
 const Case = require('../models/Case');
-const Customer = require('../models/Customer');
+const User = require('../models/User');
 const Product = require('../models/Product');
 
 // Create a new FMCG Case
@@ -26,8 +26,8 @@ exports.createCase = async (req, res) => {
         } = req.body;
 
         // Validate relations
-        const customer = await Customer.findById(customerId);
-        if (!customer) {
+        const customer = await User.findById(customerId);
+        if (!customer || customer.role !== 'Customer') {
             return res.status(404).json({ status: false, message: 'Customer not found' });
         }
 
@@ -72,7 +72,7 @@ exports.createCase = async (req, res) => {
 exports.getAllCases = async (req, res) => {
     try {
         const cases = await Case.find()
-            .populate('customerId', 'fullName email phone contactId')
+            .populate('customerId', 'name email phone contactId')
             .populate('productId', 'productName brand skuCode')
             .populate('assignedAgentId', 'name email role')
             .sort({ createdAt: -1 });

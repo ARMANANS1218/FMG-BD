@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const ProductSchema = new mongoose.Schema(
     {
+        organizationId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Organization',
+            required: true,
+        },
         productName: {
             type: String,
             required: true,
@@ -9,6 +14,7 @@ const ProductSchema = new mongoose.Schema(
         },
         brand: {
             type: String,
+            required: true,
             trim: true,
         },
         skuCode: {
@@ -20,12 +26,16 @@ const ProductSchema = new mongoose.Schema(
         },
         category: {
             type: String,
+            enum: ['Food', 'Beverage', 'Personal Care', 'Household'],
             trim: true,
         },
-        status: {
-            type: String,
-            enum: ['Active', 'Inactive', 'Discontinued'],
-            default: 'Active',
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
         },
     },
     { timestamps: true }

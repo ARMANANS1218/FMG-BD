@@ -144,7 +144,7 @@ const querySchema = new mongoose.Schema({
     type: String,
     enum: [
       'Booking', 'Cancellation', 'Reschedule', 'Refund', 'Baggage', 'Check-in', 'Meal / Seat', 'Visa / Travel Advisory', 'Other', // Legacy Airline
-      'Quality Issue', 'Damaged Product', 'Missing Item', 'Expired Product', 'Allergy Concern', 'Packaging Issue', 'Refund Request', 'Replacement Request', 'General Inquiry' // FMCG
+      'Quality Issue', 'Damaged Product', 'Missing Item', 'Expired Product', 'Allergy Concern', 'Packaging Issue', 'Refund Request', 'Refunds & Compensation', 'Replacement Request', 'General Inquiry' // FMCG
     ],
     default: 'Other'
   },

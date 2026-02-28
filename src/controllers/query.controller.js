@@ -43,7 +43,6 @@ exports.createQuery = async (req, res) => {
 
     const newQuery = await Query.create({
       petitionId,
-      caseId: petitionId, // Case ID is same as petitionId
       contactId: customerId, // Contact ID is the User ID
       customer: customerId,
       customerName: customer.name,

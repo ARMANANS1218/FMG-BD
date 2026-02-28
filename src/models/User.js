@@ -60,45 +60,6 @@ const UserSchema = new mongoose.Schema(
       select: false, // Don't include by default in queries
     },
 
-    // ==================== AIRLINE CRM CUSTOMER FIELDS ====================
-    // Customer ID for airline bookings
-    customerId: {
-      type: String,
-      trim: true,
-      default: null,
-      sparse: true,
-    },
-    title: {
-      type: String,
-      enum: ['Mr', 'Ms', 'Mrs', 'Dr', 'Prof', 'Rev', 'Other'],
-      default: null,
-      trim: true,
-    },
-    dateOfBirth: {
-      type: Date,
-      default: null,
-    },
-    gender: {
-      type: String,
-      enum: ['Male', 'Female', 'Other', 'Prefer not to say'],
-      default: null,
-    },
-    nationality: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    preferredLanguage: {
-      type: String,
-      trim: true,
-      default: 'English',
-    },
-    frequentFlyerNumber: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-
     // ==================== FMCG UK CUSTOMER FIELDS ====================
     preferredContactMethod: {
       type: String,
@@ -115,78 +76,50 @@ const UserSchema = new mongoose.Schema(
       default: false, // UK Compliance
     },
     consentCaptured: {
-      isCaptured: { type: Boolean, default: false },
+      captured: { type: Boolean, default: false },
       timestamp: { type: Date },
       gdprStatementVersion: { type: String, default: '1.0' },
     },
     dataRetentionTimer: {
       type: Number,
-      default: 6, // 6/12/20/24 months (Auto)
-      enum: [6, 12, 20, 24],
+      default: 6, // 6/12/24 months (Auto)
+      enum: [6, 12, 24],
     },
     caseId: { type: String }, // For FMCG Case Mapping
     contactId: { type: String }, // For FMCG Contact Mapping
-
-    // Travel Preferences
-    travelPreferences: {
-      mealPreference: {
-        type: String,
-        enum: [
-          'Regular',
-          'Vegetarian',
-          'Vegan',
-          'Halal',
-          'Kosher',
-          'Gluten-Free',
-          'Diabetic',
-          'Low-Calorie',
-          'Other',
-        ],
-        default: 'Regular',
-      },
-      seatPreference: {
-        type: String,
-        enum: ['Window', 'Aisle', 'Middle', 'No Preference'],
-        default: 'No Preference',
-      },
-      specialAssistance: {
-        type: String,
-        trim: true,
-        default: null, // e.g., "Wheelchair", "Extra Legroom", etc.
-      },
+    // ==================== GDPR COMPLIANCE FIELDS ====================
+    dataDeleteRequest: {
+      type: Boolean,
+      default: false
+    },
+    dataDeleteRequestDate: {
+      type: Date
+    },
+    dataDeleteRequestStatus: {
+      type: String,
+      enum: ['Pending', 'Resolved'],
+      default: 'Pending'
+    },
+    subjectAccessRequest: {
+      type: Boolean,
+      default: false
+    },
+    subjectAccessRequestDate: {
+      type: Date
+    },
+    subjectAccessRequestStatus: {
+      type: String,
+      enum: ['Pending', 'Resolved'],
+      default: 'Pending'
     },
 
-    // Emergency Contact
-    emergencyContact: {
-      name: { type: String, default: null, trim: true },
-      relationship: { type: String, default: null, trim: true },
-      phone: { type: String, default: null, trim: true },
-      email: { type: String, default: null, trim: true },
-    },
-
-    // Travel Document (Passport / National ID)
-    travelDocument: {
-      documentType: {
-        type: String,
-        enum: {
-          values: ['Passport', 'National ID', 'Other'],
-          message: '{VALUE} is not a valid travel document type',
-        },
-        default: null,
-        required: false,
-      },
-      documentNumber: { type: String, default: null, trim: true },
-      issuingCountry: { type: String, default: null, trim: true },
-      issueDate: { type: Date, default: null },
-      expiryDate: { type: Date, default: null },
-    },
 
     // Complete Address Information
     address: {
       street: { type: String, default: null, trim: true },
       locality: { type: String, default: null, trim: true },
       city: { type: String, default: null, trim: true },
-      state: { type: String, default: null, trim: true },
+      region: { type: String, default: null, trim: true },
       country: { type: String, default: null, trim: true },
       countryCode: { type: String, default: null, trim: true },
       stateCode: { type: String, default: null, trim: true },
@@ -196,8 +129,10 @@ const UserSchema = new mongoose.Schema(
         trim: true,
         validate: {
           validator: function (v) {
-            if (!v && this.role !== 'Customer') return true;
-            // UK Postcode Regex (simplified)
+            // If the value is empty or null, we allow it (meaning postcode is optional)
+            if (!v || String(v).trim() === '') return true;
+
+            // Otherwise, validate against UK Postcode standard
             return /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i.test(v);
           },
           message: props => `${props.value} is not a valid UK postcode`
@@ -249,20 +184,16 @@ const UserSchema = new mongoose.Schema(
     department: {
       type: String,
       enum: [
-        'Accounts',
-        'Technicals',
-        'Billings', // Legacy/Internal
-        'Booking',
-        'Cancellation',
-        'Reschedule',
-        'Refund',
-        'Baggage',
-        'Check-in',
-        'Meal / Seat',
-        'Visa / Travel Advisory',
-        'Support',
-        'Supports', // Alternative spelling
-        'Other', // Airline Specific
+        'Quality Assurance',
+        'Customer Service',
+        'Refunds & Compensation',
+        'Logistics & Courier',
+        'Supply Chain',
+        'Legal & Compliance',
+        'Food Safety',
+        'Social Media',
+        'Management',
+        'Other'
       ],
       default: null,
     },
@@ -297,6 +228,7 @@ const UserSchema = new mongoose.Schema(
     login_time: { type: Date, default: getIndiaTime },
     logout_time: { type: Date, default: getIndiaTime },
     break_time: { type: Date, default: getIndiaTime },
+    breakReason: { type: String, default: null },
 
     // Break logs
     breakLogs: [
@@ -304,6 +236,7 @@ const UserSchema = new mongoose.Schema(
         start: { type: Date, default: getIndiaTime },
         end: { type: Date, default: getIndiaTime },
         duration: { type: Number },
+        reason: { type: String, default: null },
       },
     ],
 
