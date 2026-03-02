@@ -41,6 +41,8 @@ const forgotPasswordRoutes = require('./routes/forgotPassword.routes');
 const agentPerformanceRoutes = require('./routes/agentPerformance.routes');
 const invoiceRoutes = require('./routes/invoice.routes');
 const fmcgReportingRoutes = require('./routes/fmcgReporting.routes');
+const productRoutes = require('./routes/product.routes');
+const caseRoutes = require('./routes/case.routes');
 const User = require('./models/User');
 const initCallSocket = require('./sockets/callSocket');
 const initQuerySocket = require('./socket/querySocket');
@@ -428,6 +430,8 @@ app.use('/api/v1/agent-performance', agentPerformanceRoutes);
 app.use('/api/v1/forgot-password', forgotPasswordRoutes);
 app.get('/api/v1/invoices', invoiceRoutes);
 app.use('/api/v1/fmcg-reports', fmcgReportingRoutes);
+app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/cases', caseRoutes);
 
 // ✅ Health Check
 app.get('/', (req, res) => {

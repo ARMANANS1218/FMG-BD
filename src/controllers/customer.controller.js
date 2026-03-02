@@ -43,17 +43,17 @@ exports.customerRegister = async (req, res) => {
   }
 };
 exports.getProfile = async (req, res) => {
-    try {
-        const userId = req.user?.id;
-        const user = await User.findById(userId).select('-password');
-        if (!user) {
-            return res.status(404).json({ message: 'User not found', status: false, data: null });
-        }
-        res.status(200).json({ message: 'Profile fetched successfully', status: true, data: user });
-    } catch (error) {
-        console.error('Error fetching profile:', error.message);
-        res.status(500).json({ message: 'Internal server error', status: false, data: null });
+  try {
+    const userId = req.user?.id;
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found', status: false, data: null });
     }
+    res.status(200).json({ message: 'Profile fetched successfully', status: true, data: user });
+  } catch (error) {
+    console.error('Error fetching profile:', error.message);
+    res.status(500).json({ message: 'Internal server error', status: false, data: null });
+  }
 };
 // LOGIN
 exports.customerLogin = async (req, res) => {
@@ -69,12 +69,12 @@ exports.customerLogin = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ status: false, message: 'Invalid email or password' });
     }
-    
+
     customer.is_active = true;
     customer.login_time = new Date();
     customer.workStatus = 'active';
     await customer.save();
-    
+
     const token = jwt.sign(
       { id: customer._id, role: customer.role },
       process.env.ACCESS_TOKEN_SECRET || 'secret_key',
@@ -105,10 +105,9 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ message: 'User ID is required', status: false });
     }
 
-    const { 
-      user_name, name, mobile, 
-      title, nationality, preferredLanguage, frequentFlyerNumber, 
-      customerType, address, governmentId 
+    const {
+      user_name, name, mobile,
+      customerType, address, governmentId
     } = req.body;
     const profileImage = req.file?.filename;
 
@@ -127,12 +126,8 @@ exports.updateProfile = async (req, res) => {
     if (name) user.name = name;
     if (mobile) user.mobile = mobile;
     if (profileImage) user.profileImage = profileImage;
-    
+
     // Airline CRM Fields updates
-    if (title) user.title = title;
-    if (nationality) user.nationality = nationality;
-    if (preferredLanguage) user.preferredLanguage = preferredLanguage;
-    if (frequentFlyerNumber) user.frequentFlyerNumber = frequentFlyerNumber;
     if (customerType) user.customerType = customerType;
     if (address) user.address = { ...user.address, ...address };
     if (governmentId) user.governmentId = { ...user.governmentId, ...governmentId };
@@ -173,7 +168,7 @@ exports.createCustomer = async (req, res) => {
   try {
     const agentId = req.user?.id;
     const agent = await User.findById(agentId);
-    
+
     if (!agent || !['Agent', 'TL', 'QA', 'Admin'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -184,15 +179,11 @@ exports.createCustomer = async (req, res) => {
       email,
       mobile,
       alternatePhone,
-      title,
       dateOfBirth,
       gender,
-      nationality,
-      preferredLanguage,
-      frequentFlyerNumber,
-      travelPreferences, // { mealPreference, seatPreference, specialAssistance }
-      emergencyContact, // { name, relationship, phone, email }
-      travelDocument, // { documentType, documentNumber, issuingCountry, issueDate, expiryDate }
+      preferredContactMethod,
+      customerType,
+      vulnerableCustomerFlag,
       address,
       petitionId, // Optional: Link current query to this customer
       agentNotes,
@@ -225,18 +216,18 @@ exports.createCustomer = async (req, res) => {
     if (!customerId) {
       const currentYear = new Date().getFullYear();
       const yearSuffix = currentYear.toString().slice(-2); // Get last 2 digits of year
-      
+
       let isUnique = false;
       while (!isUnique) {
         const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
         finalCustomerId = `BM/${randomDigits}/${yearSuffix}`;
-        
+
         // Check if this customerId already exists
-        const existingCustomer = await User.findOne({ 
+        const existingCustomer = await User.findOne({
           customerId: finalCustomerId,
-          organizationId: agent.organizationId 
+          organizationId: agent.organizationId
         });
-        
+
         if (!existingCustomer) {
           isUnique = true;
         }
@@ -247,37 +238,12 @@ exports.createCustomer = async (req, res) => {
     const defaultPassword = `Welcome@${Math.floor(1000 + Math.random() * 9000)}`;
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-    // Clean travelDocument - remove if empty or incomplete
-    let cleanedTravelDocument = null;
-    if (travelDocument && travelDocument.documentType && travelDocument.documentType.trim() !== '') {
-      cleanedTravelDocument = {
-        documentType: travelDocument.documentType,
-        documentNumber: travelDocument.documentNumber || null,
-        issuingCountry: travelDocument.issuingCountry || null,
-        issueDate: travelDocument.issueDate || null,
-        expiryDate: travelDocument.expiryDate || null
-      };
-    }
-
-    // Clean travel preferences
-    let cleanedTravelPreferences = null;
-    if (travelPreferences) {
-      cleanedTravelPreferences = {
-        mealPreference: travelPreferences.mealPreference || 'Regular',
-        seatPreference: travelPreferences.seatPreference || 'No Preference',
-        specialAssistance: travelPreferences.specialAssistance || null
-      };
-    }
-
     // Clean emergency contact
-    let cleanedEmergencyContact = null;
-    if (emergencyContact && emergencyContact.name) {
-      cleanedEmergencyContact = {
-        name: emergencyContact.name,
-        relationship: emergencyContact.relationship || null,
-        phone: emergencyContact.phone || null,
-        email: emergencyContact.email || null
-      };
+
+    if (address && (address.postCode || address.postcode)) {
+      address.postalCode = address.postCode || address.postcode;
+      delete address.postCode;
+      delete address.postcode;
     }
 
     const newCustomer = await User.create({
@@ -291,15 +257,11 @@ exports.createCustomer = async (req, res) => {
       password: hashedPassword,
       visiblePassword: defaultPassword, // Store for recovery
       role: 'Customer',
-      title: title || null,
       dateOfBirth: dateOfBirth || null,
       gender: gender || null,
-      nationality: nationality || null,
-      preferredLanguage: preferredLanguage || 'English',
-      frequentFlyerNumber: frequentFlyerNumber || null,
-      travelDocument: cleanedTravelDocument,
-      travelPreferences: cleanedTravelPreferences,
-      emergencyContact: cleanedEmergencyContact,
+      preferredContactMethod: preferredContactMethod || 'Email',
+      customerType: customerType || 'End Consumer',
+      vulnerableCustomerFlag: vulnerableCustomerFlag || false,
       address: address || null,
       agentNotes: agentNotes || null,
       queryHistory: [], // Initialize empty query history
@@ -350,7 +312,7 @@ exports.updateCustomerDetails = async (req, res) => {
   try {
     const agentId = req.user?.id;
     const customerId = req.params.id;
-    
+
     const agent = await User.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
@@ -365,21 +327,16 @@ exports.updateCustomerDetails = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ status: false, message: 'Customer not found' });
     }
-
     const {
       name,
       email,
       mobile,
       alternatePhone,
-      title,
       dateOfBirth,
       gender,
-      nationality,
-      preferredLanguage,
-      frequentFlyerNumber,
-      travelDocument,
-      travelPreferences,
-      emergencyContact,
+      preferredContactMethod,
+      customerType,
+      vulnerableCustomerFlag,
       address,
       agentNotes,
       profileImage,
@@ -390,39 +347,26 @@ exports.updateCustomerDetails = async (req, res) => {
     if (email) customer.email = email;
     if (mobile) customer.mobile = mobile;
     if (alternatePhone !== undefined) customer.alternatePhone = alternatePhone;
-    
+
     // Airline Fields
-    if (title) customer.title = title;
     if (dateOfBirth) customer.dateOfBirth = dateOfBirth;
     if (gender) customer.gender = gender;
-    if (nationality) customer.nationality = nationality;
-    if (preferredLanguage) customer.preferredLanguage = preferredLanguage;
-    if (frequentFlyerNumber) customer.frequentFlyerNumber = frequentFlyerNumber;
+    if (preferredContactMethod) customer.preferredContactMethod = preferredContactMethod;
+    if (customerType) customer.customerType = customerType;
+    if (vulnerableCustomerFlag !== undefined) customer.vulnerableCustomerFlag = vulnerableCustomerFlag;
     if (agentNotes !== undefined) customer.agentNotes = agentNotes;
 
-    if (travelDocument) {
-       customer.travelDocument = { 
-           ...(customer.travelDocument || {}), 
-           ...travelDocument 
-       };
-    }
-    if (travelPreferences) {
-       customer.travelPreferences = { 
-           ...(customer.travelPreferences || {}), 
-           ...travelPreferences 
-       };
-    }
-    if (emergencyContact) {
-       customer.emergencyContact = { 
-           ...(customer.emergencyContact || {}), 
-           ...emergencyContact 
-       };
-    }
+
     if (address) {
-       customer.address = { 
-           ...(customer.address || {}), 
-           ...address 
-       };
+      if (address.postCode || address.postcode) {
+        address.postalCode = address.postCode || address.postcode;
+        delete address.postCode;
+        delete address.postcode;
+      }
+      customer.address = {
+        ...(customer.address || {}),
+        ...address
+      };
     }
     if (profileImage) customer.profileImage = profileImage;
 
@@ -447,7 +391,7 @@ exports.deleteCustomer = async (req, res) => {
   try {
     const agentId = req.user?.id;
     const customerId = req.params.id;
-    
+
     const agent = await User.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
@@ -925,7 +869,7 @@ exports.findCustomerByQuery = async (req, res) => {
     // Find the query first to get its _id
     const Query = require('../models/Query');
     const query = await Query.findOne({ petitionId: queryId, organizationId: agent.organizationId });
-    
+
     if (!query) {
       return res.status(404).json({ status: false, message: 'Query not found' });
     }
@@ -994,5 +938,196 @@ exports.updateCustomerProfileImage = async (req, res) => {
   } catch (error) {
     console.error('Update Customer Profile Image Error:', error);
     res.status(500).json({ status: false, message: 'Failed to update profile image', error: error.message });
+  }
+};
+
+// ==================== GDPR COMPLIANCE ====================
+
+// REQUEST DATA DELETION
+exports.requestDataDeletion = async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    // Both the customer themselves and agents should be able to trigger this request. 
+    // Usually it goes into a pending state.
+    const userId = req.user?.id;
+    const user = await User.findById(userId);
+
+    const customer = await User.findOne({ _id: customerId, role: 'Customer' });
+    if (!customer) {
+      return res.status(404).json({ status: false, message: 'Customer not found' });
+    }
+
+    // If customer role, only allow modifying their own profile
+    if (user.role === 'Customer' && String(customer._id) !== String(user._id)) {
+      return res.status(403).json({ status: false, message: 'Unauthorized' });
+    }
+
+    customer.dataDeleteRequest = true;
+    customer.dataDeleteRequestDate = new Date();
+    await customer.save();
+
+    res.status(200).json({
+      status: true,
+      message: 'Data deletion request submitted successfully',
+    });
+  } catch (error) {
+    console.error('Data Deletion Request Error:', error);
+    res.status(500).json({ status: false, message: 'Failed to submit data deletion request', error: error.message });
+  }
+};
+
+// REQUEST SUBJECT ACCESS (SAR)
+exports.requestSubjectAccess = async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const userId = req.user?.id;
+    const user = await User.findById(userId);
+
+    const customer = await User.findOne({ _id: customerId, role: 'Customer' });
+    if (!customer) {
+      return res.status(404).json({ status: false, message: 'Customer not found' });
+    }
+
+    if (user.role === 'Customer' && String(customer._id) !== String(user._id)) {
+      return res.status(403).json({ status: false, message: 'Unauthorized' });
+    }
+
+    customer.subjectAccessRequest = true;
+    customer.subjectAccessRequestDate = new Date();
+    await customer.save();
+
+    res.status(200).json({
+      status: true,
+      message: 'Subject Access Request (SAR) submitted successfully',
+    });
+  } catch (error) {
+    console.error('SAR Request Error:', error);
+    res.status(500).json({ status: false, message: 'Failed to submit SAR', error: error.message });
+  }
+};
+
+// UPDATE CONSENT
+exports.updateConsent = async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const userId = req.user?.id;
+    const user = await User.findById(userId);
+    const { captured, gdprStatementVersion } = req.body;
+
+    const customer = await User.findOne({ _id: customerId, role: 'Customer' });
+    if (!customer) {
+      return res.status(404).json({ status: false, message: 'Customer not found' });
+    }
+
+    if (user.role === 'Customer' && String(customer._id) !== String(user._id)) {
+      return res.status(403).json({ status: false, message: 'Unauthorized' });
+    }
+
+    customer.consentCaptured = {
+      captured: captured !== undefined ? captured : true,
+      timestamp: new Date(),
+      gdprStatementVersion: gdprStatementVersion || customer.consentCaptured?.gdprStatementVersion || '1.0'
+    };
+
+    await customer.save();
+
+    res.status(200).json({
+      status: true,
+      message: 'Consent updated successfully',
+    });
+  } catch (error) {
+    console.error('Update Consent Error:', error);
+    res.status(500).json({ status: false, message: 'Failed to update consent', error: error.message });
+  }
+};
+
+// GET GDPR REQUESTS (Admin/DPO)
+exports.getPendingGdprRequests = async (req, res) => {
+  try {
+    const adminId = req.user?.id;
+    const admin = await User.findById(adminId);
+
+    const statusFilter = req.query.status || 'Pending';
+
+    // Typically only Admins or specific compliance roles should access this.
+    if (!admin || !['Admin', 'Management'].includes(admin.role)) {
+      return res.status(403).json({ status: false, message: 'Unauthorized: Admin access required' });
+    }
+
+    let queryConditions = [];
+
+    if (statusFilter === 'Pending') {
+      queryConditions = [
+        { dataDeleteRequest: true, dataDeleteRequestStatus: 'Pending' },
+        { subjectAccessRequest: true, subjectAccessRequestStatus: 'Pending' }
+      ];
+    } else if (statusFilter === 'Resolved') {
+      queryConditions = [
+        { dataDeleteRequest: true, dataDeleteRequestStatus: 'Resolved' },
+        { subjectAccessRequest: true, subjectAccessRequestStatus: 'Resolved' }
+      ];
+    } else { // All
+      queryConditions = [
+        { dataDeleteRequest: true },
+        { subjectAccessRequest: true }
+      ];
+    }
+
+    const requests = await User.find({
+      organizationId: admin.organizationId,
+      role: 'Customer',
+      $or: queryConditions
+    }).select('name email mobile customerId dataDeleteRequest dataDeleteRequestDate dataDeleteRequestStatus subjectAccessRequest subjectAccessRequestDate subjectAccessRequestStatus consentCaptured');
+
+    res.status(200).json({
+      status: true,
+      data: requests
+    });
+  } catch (error) {
+    console.error('Get GDPR Requests Error:', error);
+    res.status(500).json({ status: false, message: 'Failed to get GDPR requests', error: error.message });
+  }
+};
+
+// RESOLVE GDPR REQUEST (Admin/DPO)
+exports.resolveGdprRequest = async (req, res) => {
+  try {
+    const adminId = req.user?.id;
+    const customerId = req.params.id;
+    const { requestType } = req.body; // 'Deletion' or 'SAR'
+
+    const admin = await User.findById(adminId);
+    if (!admin || !['Admin', 'Management'].includes(admin.role)) {
+      return res.status(403).json({ status: false, message: 'Unauthorized: Admin access required' });
+    }
+
+    const customer = await User.findOne({
+      _id: customerId,
+      organizationId: admin.organizationId,
+      role: 'Customer'
+    });
+
+    if (!customer) {
+      return res.status(404).json({ status: false, message: 'Customer not found' });
+    }
+
+    if (requestType === 'Deletion') {
+      customer.dataDeleteRequestStatus = 'Resolved';
+    } else if (requestType === 'SAR') {
+      customer.subjectAccessRequestStatus = 'Resolved';
+    } else {
+      return res.status(400).json({ status: false, message: 'Invalid request type. Must be Deletion or SAR.' });
+    }
+
+    await customer.save();
+
+    res.status(200).json({
+      status: true,
+      message: `${requestType} request resolved successfully.`
+    });
+
+  } catch (error) {
+    console.error('Resolve GDPR Request Error:', error);
+    res.status(500).json({ status: false, message: 'Failed to resolve GDPR request', error: error.message });
   }
 };

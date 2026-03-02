@@ -474,9 +474,8 @@ exports.loginUser = async (req, res) => {
         const attemptsLeft = 3 - user.failedLoginAttempts;
         return res.status(401).json({
           status: false,
-          message: `Wrong password. ${attemptsLeft} attempt${
-            attemptsLeft !== 1 ? 's' : ''
-          } remaining before account is blocked.`,
+          message: `Wrong password. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''
+            } remaining before account is blocked.`,
           attemptsLeft,
         });
       } else {
@@ -562,9 +561,8 @@ exports.loginUser = async (req, res) => {
 
             return res.status(403).json({
               status: false,
-              message: `Access denied. Organization IP configuration is currently disabled. ${attemptsLeft} attempt${
-                attemptsLeft !== 1 ? 's' : ''
-              } remaining before account is blocked.`,
+              message: `Access denied. Organization IP configuration is currently disabled. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''
+                } remaining before account is blocked.`,
               attemptsLeft,
               details: {
                 yourIp: ip,
@@ -607,9 +605,8 @@ exports.loginUser = async (req, res) => {
               status: false,
               message: `Access denied. Your IP address (${ip}) is not authorized. Allowed IPs: ${ipCheck.allowedIps.join(
                 ', '
-              )}. ${attemptsLeft} attempt${
-                attemptsLeft !== 1 ? 's' : ''
-              } remaining before account is blocked.`,
+              )}. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''
+                } remaining before account is blocked.`,
               attemptsLeft,
               details: {
                 yourIp: ip,
@@ -623,8 +620,7 @@ exports.loginUser = async (req, res) => {
           // ✅ IP is ALLOWED - reset failed IP attempts if any
           if (ipCheck.allowed) {
             console.log(
-              `✅ [IP ALLOWED] ${
-                ipCheck.reason === 'ip_allowed' ? 'IP in allowed list' : ipCheck.reason
+              `✅ [IP ALLOWED] ${ipCheck.reason === 'ip_allowed' ? 'IP in allowed list' : ipCheck.reason
               }`
             );
 
@@ -770,18 +766,18 @@ exports.loginUser = async (req, res) => {
               clientCoordinates: { latitude: clientLat, longitude: clientLng },
               nearestAllowedLocation: nearestLoc
                 ? {
-                    id: nearestLoc._id,
-                    label: nearestLoc.label || null,
-                    address: nearestLoc.address || null,
-                    coordinates: nearestLoc.location?.coordinates
-                      ? {
-                          latitude: nearestLoc.location.coordinates[1],
-                          longitude: nearestLoc.location.coordinates[0],
-                        }
-                      : null,
-                    radiusMeters: nearestLoc.radiusMeters || null,
-                    isActive: !!nearestLoc.isActive,
-                  }
+                  id: nearestLoc._id,
+                  label: nearestLoc.label || null,
+                  address: nearestLoc.address || null,
+                  coordinates: nearestLoc.location?.coordinates
+                    ? {
+                      latitude: nearestLoc.location.coordinates[1],
+                      longitude: nearestLoc.location.coordinates[0],
+                    }
+                    : null,
+                  radiusMeters: nearestLoc.radiusMeters || null,
+                  isActive: !!nearestLoc.isActive,
+                }
                 : null,
             });
           }
@@ -966,7 +962,12 @@ exports.logoutUser = async (req, res) => {
           $set: {
             logoutTime: logoutTime,
             totalOnlineTime: user.accumulatedActiveTime, // Only productive time
-            breakLogs: user.breakLogs,
+            breakLogs: user.breakLogs.map(log => ({
+              start: log.start,
+              end: log.end,
+              duration: log.duration,
+              reason: log.reason || 'Break'
+            })),
             totalBreakTime: totalBreakMinutes,
             breakCount: user.breakLogs.length,
           },
@@ -1017,6 +1018,7 @@ exports.toggleBreak = async (req, res) => {
 
       agent.workStatus = 'break';
       agent.break_time = now;
+      agent.breakReason = req.body.reason || req.body.breakReason || 'Break';
       agent.lastStatusChangeTime = now; // Track when break started
 
       await agent.save({ validateModifiedOnly: true });
@@ -1046,7 +1048,9 @@ exports.toggleBreak = async (req, res) => {
         start: breakStart,
         end: breakEnd,
         duration: breakDurationInMinutes,
+        reason: agent.breakReason || 'Break',
       });
+      agent.breakReason = null;
 
       // Sort logs (latest first)
       agent.breakLogs.sort((a, b) => new Date(b.start) - new Date(a.start));
@@ -1216,9 +1220,8 @@ exports.otpResetPassword = async (req, res) => {
     );
 
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'Kalinga Support'}" <${
-        process.env.SMTP_FROM_EMAIL || process.env.EMAIL_USER || process.env.SMTP_USERNAME
-      }>`,
+      from: `"${process.env.SMTP_FROM_NAME || 'Kalinga Support'}" <${process.env.SMTP_FROM_EMAIL || process.env.EMAIL_USER || process.env.SMTP_USERNAME
+        }>`,
       to: email,
       subject: 'OTP to reset password',
       text: `Your OTP is: ${newOtp}.`,
@@ -1415,7 +1418,7 @@ exports.getAllEmployees = async (req, res) => {
       organizationId: organizationId,
     })
       .select(
-        'name email role alias department address tier profileImage visiblePassword employee_id mobile is_active workStatus isBlocked login_time logout_time break_time breakLogs accumulatedActiveTime lastStatusChangeTime'
+        'name email role alias department address tier profileImage visiblePassword employee_id mobile is_active workStatus isBlocked login_time logout_time break_time breakReason breakLogs accumulatedActiveTime lastStatusChangeTime'
       )
       .sort({ createdAt: -1 });
 
@@ -2143,7 +2146,7 @@ exports.getActivityReport = async (req, res) => {
       organizationId: organizationId,
       role: 'Agent',
     })
-      .select('_id name email employee_id profileImage isBlocked')
+      .select('_id name email employee_id profileImage isBlocked workStatus breakReason')
       .lean();
 
     // Get activity data for all agents in the period

@@ -35,7 +35,8 @@ const dailyActivitySchema = new mongoose.Schema({
   breakLogs: [{
     start: Date,
     end: Date,
-    duration: Number // in minutes
+    duration: Number, // in minutes
+    reason: { type: String, default: null }
   }],
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
