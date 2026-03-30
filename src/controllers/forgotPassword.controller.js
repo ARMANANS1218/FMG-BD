@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Customer = require('../models/Customer');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -40,7 +40,7 @@ exports.sendForgotPasswordOTP = async (req, res) => {
     }
 
     // Find user by email (check staff first, then customers)
-    let user = await User.findOne({ email: email.toLowerCase().trim() });
+    let user = await Staff.findOne({ email: email.toLowerCase().trim() });
     let isCustomerAccount = false;
     if (!user) {
       user = await Customer.findOne({ email: email.toLowerCase().trim() });
@@ -234,7 +234,7 @@ exports.resetPasswordWithOTP = async (req, res) => {
     }
 
     // Find user (check staff first, then customers)
-    let user = await User.findOne({ email: normalizedEmail });
+    let user = await Staff.findOne({ email: normalizedEmail });
     let isCustomerAccount = false;
     if (!user) {
       user = await Customer.findOne({ email: normalizedEmail });

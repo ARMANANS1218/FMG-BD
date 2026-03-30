@@ -1,5 +1,5 @@
 const SalaryInvoice = require('../models/SalaryInvoice');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Attendance = require('../models/Attendance');
 const DailyActivity = require('../models/DailyActivity');
 const { startOfMonth, endOfMonth, getDaysInMonth } = require('date-fns');
@@ -836,7 +836,7 @@ exports.updateBankDetails = async (req, res) => {
     const { centerCode, beneficiaryName, bankName, accountNumber, ifscCode, swiftCode, country, state } = req.body;
     const organizationId = req.user?.organizationId;
     const userId = req.user?.id;
-    const currentUser = await User.findById(userId).select('role customRole employee_id').lean();
+    const currentUser = await Staff.findById(userId).select('role customRole employee_id').lean();
     const userRole = normalizeRoleKey(currentUser?.customRole || currentUser?.role || req.user?.role);
 
     // Client, Aggregator, and Admin roles can add/update bank details
@@ -985,7 +985,7 @@ exports.getBankDetails = async (req, res) => {
     const { id } = req.params;
     const requestedCenterCode = normalizeCenterCode(req.query?.centerCode);
     const organizationId = req.user?.organizationId;
-    const currentUser = await User.findById(req.user?.id).select('role customRole employee_id').lean();
+    const currentUser = await Staff.findById(req.user?.id).select('role customRole employee_id').lean();
     const userRole = normalizeRoleKey(currentUser?.customRole || currentUser?.role || req.user?.role);
     const viewerCenterCode = normalizeCenterCode(currentUser?.employee_id || req.user?.employee_id || req.user?.centerCode);
 

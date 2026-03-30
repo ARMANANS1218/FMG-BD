@@ -4,28 +4,29 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 // Import models
-const User = require('./src/models/User');
+const Staff = require('./src/models/Staff');
 const Organization = require('./src/models/Organization');
 
 const seedUsers = async () => {
   try {
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ MongoDB Connected for seeding');
+    console.log('? MongoDB Connected for seeding');
 
     // Hash password
     const hashedPassword = await bcrypt.hash('An183890@#', 10);
 
     // Step 1: Create or get default organization
-    let organization = await Organization.findOne({ organizationId: 'ORG-SEED-001' });
-    
+    let organization = await Organization.findOne({ organizationId: 'ORG-001' });
+
     if (!organization) {
       const apiKey = crypto.randomBytes(32).toString('hex');
       organization = new Organization({
-        organizationId: 'ORG-SEED-001',
-        name: 'Default Organization',
-        displayName: 'Default Org',
-        domain: 'default.local',
+        organizationId: 'ORG-001',
+        name: 'FMG',
+        displayName: 'FMG',
+        domain: 'fmg.local',
+        adminEmail: 'arman.bitmax@gmail.com',
         apiKey: apiKey,
         subscription: {
           plan: 'enterprise',
@@ -47,121 +48,49 @@ const seedUsers = async () => {
         isActive: true,
       });
       await organization.save();
-      console.log('✅ Default organization created: ORG-SEED-001');
+      console.log('? Default organization created: ORG-001');
     } else {
-      console.log('ℹ️  Default organization already exists');
+      console.log('?? Default organization already exists');
     }
 
     const orgId = organization._id;
 
-    // Check if users already exist
-    const existingAdmin = await User.findOne({ email: 'armanansarig813@gmail.com' });
-    const existingAgent = await User.findOne({ email: 'armanansarig814@gmail.com' });
-    const existingQA = await User.findOne({ email: 'armanansarig815@gmail.com' });
-    const existingCustomer = await User.findOne({ email: 'armanansarig816@gmail.com', role: 'Customer' });
+    // Check if user already exists
+    const existingSuperAdmin = await Staff.findOne({ email: 'arman.bitmax@gmail.com' });
 
-    // Seed Admin
-    if (!existingAdmin) {
-      const admin = new User({
+    // Seed SuperAdmin
+    if (!existingSuperAdmin) {
+      const superadmin = new Staff({
         organizationId: orgId,
-        employee_id: 'EMP1001',
-        user_name: 'admin_user',
-        name: 'Admin User',
-        email: 'armanansarig813@gmail.com',
+        employee_id: 'SA1001',
+        user_name: 'superadmin_fmg',
+        name: 'FMG',
+        email: 'arman.bitmax@gmail.com',
         password: hashedPassword,
-        role: 'Admin',
-        mobile: '1234567890',
+        role: 'SuperAdmin',
+        mobile: '9140797819',
         is_active: true,
       });
-      await admin.save();
-      console.log('✅ Admin user created: EMP1001');
+      await superadmin.save();
+      console.log('? SuperAdmin user created: SA1001');
     } else {
-      console.log('ℹ️  Admin user already exists: EMP1001');
+      console.log('?? SuperAdmin user already exists');
     }
 
-    // Seed Agent
-    if (!existingAgent) {
-      const agent = new User({
-        organizationId: orgId,
-        employee_id: 'EMP1002',
-        user_name: 'agent_user',
-        name: 'Agent User',
-        email: 'armanansarig814@gmail.com',
-        password: hashedPassword,
-        role: 'Agent',
-        mobile: '1234567891',
-        is_active: true,
-      });
-      await agent.save();
-      console.log('✅ Agent user created: EMP1002');
-    } else {
-      console.log('ℹ️  Agent user already exists: EMP1002');
-    }
-
-    // Seed QA
-    if (!existingQA) {
-      const qa = new User({
-        organizationId: orgId,
-        employee_id: 'EMP1003',
-        user_name: 'qa_user',
-        name: 'QA User',
-        email: 'armanansarig815@gmail.com',
-        password: hashedPassword,
-        role: 'QA',
-        mobile: '1234567892',
-        is_active: true,
-      });
-      await qa.save();
-      console.log('✅ QA user created: EMP1003');
-    } else {
-      console.log('ℹ️  QA user already exists: EMP1003');
-    }
-
-    // Seed Customer
-    if (!existingCustomer) {
-      const customer = new User({
-        organizationId: orgId,
-        user_name: 'customer_user',
-        name: 'Customer User',
-        email: 'armanansarig816@gmail.com',
-        password: hashedPassword,
-        mobile: '1234567893',
-        role: 'Customer',
-        is_active: true,
-        customerType: 'registered',
-      });
-      await customer.save();
-      console.log('✅ Customer user created');
-    } else {
-      console.log('ℹ️  Customer user already exists');
-    }
-
-    console.log('\n🎉 Seeding completed successfully!');
-    console.log('\n📝 Login Credentials:');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('ADMIN:');
-    console.log('  Employee ID: EMP1001');
-    console.log('  Email: armanansarig813@gmail.com');
+    console.log('\n?? Seeding completed successfully!');
+    console.log('\n?? Login Credentials:');
+    console.log('---------------------------------');
+    console.log('SUPERADMIN:');
+    console.log('  Name: FMG');
+    console.log('  Email: arman.bitmax@gmail.com');
     console.log('  Password: An183890@#');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('AGENT:');
-    console.log('  Employee ID: EMP1002');
-    console.log('  Email: armanansarig814@gmail.com');
-    console.log('  Password: An183890@#');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('QA:');
-    console.log('  Employee ID: EMP1003');
-    console.log('  Email: armanansarig815@gmail.com');
-    console.log('  Password: An183890@#');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('CUSTOMER:');
-    console.log('  Email: armanansarig816@gmail.com');
-    console.log('  Password: An183890@#');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log('  Phone: 9140797819');
+    console.log('  Organization: ORG-001');
+    console.log('---------------------------------\n');
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('? Error seeding database:', error);
     process.exit(1);
   }
 };

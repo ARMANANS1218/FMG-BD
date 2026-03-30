@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const getIndiaTime = require('../utils/timezone');
 
-const UserSchema = new mongoose.Schema(
+const StaffSchema = new mongoose.Schema(
   {
     // ==================== MULTI-TENANT FIELD ====================
     organizationId: {
@@ -191,7 +191,7 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['Customer'],
+      enum: ['SuperAdmin', 'Admin', 'Agent', 'QA', 'TL', 'Management', 'Dev', 'Center'],
       default: 'Customer',
     },
     // Dynamic custom role name (e.g., "Senior Agent", "Dev Support", etc.)
@@ -316,14 +316,14 @@ const UserSchema = new mongoose.Schema(
 );
 
 // ==================== INDEXES FOR MULTI-TENANCY ====================
-UserSchema.index({ organizationId: 1, role: 1 });
-UserSchema.index({ organizationId: 1, email: 1 });
-UserSchema.index({ organizationId: 1, workStatus: 1 });
-UserSchema.index({ guestIdentifier: 1 }, { sparse: true });
-UserSchema.index({ organizationId: 1, tier: 1, department: 1, role: 1 });
-UserSchema.index({ customerId: 1 }, { sparse: true });
-UserSchema.index({ organizationId: 1, customerId: 1 });
-UserSchema.index({ organizationId: 1, mobile: 1 });
-UserSchema.index({ organizationId: 1, 'address.city': 1, 'address.state': 1 });
+StaffSchema.index({ organizationId: 1, role: 1 });
+StaffSchema.index({ organizationId: 1, email: 1 });
+StaffSchema.index({ organizationId: 1, workStatus: 1 });
+StaffSchema.index({ guestIdentifier: 1 }, { sparse: true });
+StaffSchema.index({ organizationId: 1, tier: 1, department: 1, role: 1 });
+StaffSchema.index({ customerId: 1 }, { sparse: true });
+StaffSchema.index({ organizationId: 1, customerId: 1 });
+StaffSchema.index({ organizationId: 1, mobile: 1 });
+StaffSchema.index({ organizationId: 1, 'address.city': 1, 'address.state': 1 });
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model('Staff', StaffSchema);

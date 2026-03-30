@@ -169,11 +169,11 @@ exports.createGuestConversation = async (req, res) => {
         const orgRoom = `org:${organization._id}`;
 
         // --- 🎯 ROBUST FILTERING LOGIC (Same as query.controller.js) ---
-        const User = require('../models/User'); // Ensure User model is available
+        const Staff = require('../models/Staff'); // Ensure User model is available
 
         // 1. Find all "Available" agents in DB (Active status + Correct Role)
         // For NEW queries: Only notify Agents (not TL/QA - they only handle escalations)
-        const availableUsers = await User.find({
+        const availableUsers = await Staff.find({
           organizationId: organization._id,
           role: 'Agent', // ✅ Only Agents get new query notifications
           workStatus: 'active',

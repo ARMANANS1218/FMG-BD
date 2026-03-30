@@ -1,5 +1,5 @@
 const Organization = require('../models/Organization');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Query = require('../models/Query');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -230,9 +230,9 @@ exports.getOrganizationById = async (req, res) => {
     const Customer = require('../models/Customer');
     // Get organization stats
     const stats = {
-      totalUsers: await User.countDocuments({ organizationId: orgId }),
-      totalAgents: await User.countDocuments({ organizationId: orgId, role: 'Agent' }),
-      totalQA: await User.countDocuments({ organizationId: orgId, role: 'QA' }),
+      totalUsers: await Staff.countDocuments({ organizationId: orgId }),
+      totalAgents: await Staff.countDocuments({ organizationId: orgId, role: 'Agent' }),
+      totalQA: await Staff.countDocuments({ organizationId: orgId, role: 'QA' }),
       totalCustomers: await Customer.countDocuments({ organizationId: orgId }),
       totalQueries: await Query.countDocuments({ organizationId: orgId }),
       activeQueries: await Query.countDocuments({ organizationId: orgId, status: { $in: ['Pending', 'Accepted', 'In Progress'] } }),
@@ -462,12 +462,12 @@ exports.createOrganizationAdmin = async (req, res) => {
     }
 
     // Check duplicates
-    const existingByEmail = await User.findOne({ email });
+    const existingByEmail = await Staff.findOne({ email });
     if (existingByEmail) {
       return res.status(409).json({ status: false, message: 'Email already in use' });
     }
 
-    const existingByEmployee = await User.findOne({ employee_id, organizationId: orgId });
+    const existingByEmployee = await Staff.findOne({ employee_id, organizationId: orgId });
     if (existingByEmployee) {
       return res.status(409).json({ status: false, message: 'Employee ID already in use for this organization' });
     }
@@ -483,7 +483,7 @@ exports.createOrganizationAdmin = async (req, res) => {
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     // Create Admin user under this organization
-    const adminUser = await User.create({
+    const adminUser = await Staff.create({
       organizationId: orgId,
       employee_id,
       user_name,
@@ -577,7 +577,7 @@ exports.getOrganizationAdmins = async (req, res) => {
     }
     
     // Get all admins for this organization (include visiblePassword for SuperAdmin)
-    const admins = await User.find({
+    const admins = await Staff.find({
       organizationId: orgId,
       role: 'Admin',
       is_active: { $ne: false } // Include active and undefined
@@ -614,7 +614,7 @@ exports.getAdminDetails = async (req, res) => {
     }
     
     // Find admin
-    const admin = await User.findOne({
+    const admin = await Staff.findOne({
       _id: adminId,
       organizationId: orgId,
       role: 'Admin'
@@ -659,7 +659,7 @@ exports.updateOrganizationAdmin = async (req, res) => {
     }
     
     // Find admin
-    const admin = await User.findOne({
+    const admin = await Staff.findOne({
       _id: adminId,
       organizationId: orgId,
       role: 'Admin'
@@ -674,7 +674,7 @@ exports.updateOrganizationAdmin = async (req, res) => {
     
     // Check if email is being changed and if it's already taken
     if (email && email !== admin.email) {
-      const existingUser = await User.findOne({ 
+      const existingUser = await Staff.findOne({ 
         email,
         organizationId: orgId,
         _id: { $ne: adminId }
@@ -697,7 +697,7 @@ exports.updateOrganizationAdmin = async (req, res) => {
     if (mobile) updateData.mobile = mobile;
     if (typeof is_active !== 'undefined') updateData.is_active = is_active;
     
-    const updatedAdmin = await User.findByIdAndUpdate(
+    const updatedAdmin = await Staff.findByIdAndUpdate(
       adminId,
       updateData,
       { new: true }
@@ -735,7 +735,7 @@ exports.resetAdminPassword = async (req, res) => {
     }
     
     // Find admin
-    const admin = await User.findOne({
+    const admin = await Staff.findOne({
       _id: adminId,
       organizationId: orgId,
       role: 'Admin'
@@ -802,7 +802,7 @@ exports.deleteOrganizationAdmin = async (req, res) => {
     }
     
     // Find admin
-    const admin = await User.findOne({
+    const admin = await Staff.findOne({
       _id: adminId,
       organizationId: orgId,
       role: 'Admin'
@@ -816,7 +816,7 @@ exports.deleteOrganizationAdmin = async (req, res) => {
     }
     
     // Delete admin
-    await User.findByIdAndDelete(adminId);
+    await Staff.findByIdAndDelete(adminId);
     
     res.status(200).json({
       status: true,

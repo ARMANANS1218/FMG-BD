@@ -1,6 +1,6 @@
 const Email = require('../models/Email');
 const Ticket = require('../models/Ticket');
-const brevoEmailService = require('../utils/brevoEmailService');
+const transporter = require('../config/emailConfig');
 const asyncHandler = require('express-async-handler');
 
 /**
@@ -21,10 +21,8 @@ exports.sendEmail = asyncHandler(async (req, res) => {
       attachments = []
     } = req.body;
 
-    // Support both 'to' and 'recipientEmail' field names
     const finalRecipientEmail = recipientEmail || to;
 
-    // Validate required fields
     if (!finalRecipientEmail || !subject || !body) {
       return res.status(400).json({
         success: false,
@@ -32,12 +30,10 @@ exports.sendEmail = asyncHandler(async (req, res) => {
       });
     }
 
-    // Get sender info from JWT
-    const userId = req.user.id; // JWT has 'id' not '_id'
+    const userId = req.user.id; 
     
-    // Fetch full user data from database
-    const User = require('../models/User');
-    const sender = await User.findById(userId);
+    const Staff = require('../models/Staff');
+    const sender = await Staff.findById(userId);
     if (!sender) {
       return res.status(401).json({
         success: false,
@@ -46,9 +42,8 @@ exports.sendEmail = asyncHandler(async (req, res) => {
     }
 
     const senderEmail = sender.email;
-    const senderName = sender.name || sender.user_name;
+    const senderName = sender.name || sender.user_name || 'Support';
 
-    // If ticketId provided, verify it exists
     if (ticketId) {
       const ticket = await Ticket.findById(ticketId);
       if (!ticket) {
@@ -59,8 +54,27 @@ exports.sendEmail = asyncHandler(async (req, res) => {
       }
     }
 
-    // Send email through Brevo
-    const emailDoc = await brevoEmailService.sendEmail({
+    const fromName = senderName || process.env.SMTP_FROM_NAME || 'Support';
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.EMAIL_USER || process.env.SMTP_USERNAME;
+    
+    const mailOptions = {
+      from: `"${fromName}" <${fromEmail}>`,
+      to: finalRecipientEmail,
+      subject: subject,
+      text: body,
+      html: htmlBody || body,
+    };
+    
+    if (attachments && attachments.length > 0) {
+       mailOptions.attachments = attachments.map(att => ({
+          filename: att.name || att.filename,
+          content: att.content || att.buffer
+       }));
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+
+    const emailDoc = await Email.create({
       ticketId: ticketId || null,
       senderId: userId,
       senderEmail,
@@ -69,8 +83,11 @@ exports.sendEmail = asyncHandler(async (req, res) => {
       recipientName,
       subject,
       body,
-      htmlBody,
-      attachments
+      htmlBody: htmlBody || body,
+      messageId: info.messageId,
+      status: 'sent',
+      type: 'outgoing',
+      sentAt: new Date()
     });
 
     res.status(201).json({
@@ -97,7 +114,6 @@ exports.getTicketEmails = asyncHandler(async (req, res) => {
   try {
     const { ticketId } = req.params;
 
-    // Verify ticket exists
     const ticket = await Ticket.findById(ticketId);
     if (!ticket) {
       return res.status(404).json({
@@ -106,8 +122,7 @@ exports.getTicketEmails = asyncHandler(async (req, res) => {
       });
     }
 
-    // Get all emails for this ticket
-    const emails = await brevoEmailService.getTicketEmails(ticketId);
+    const emails = await Email.find({ ticketId }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -134,7 +149,11 @@ exports.markEmailAsRead = asyncHandler(async (req, res) => {
     const { emailId } = req.params;
     const userId = req.user._id;
 
-    const emailDoc = await brevoEmailService.markEmailAsRead(emailId, userId);
+    const emailDoc = await Email.findByIdAndUpdate(
+      emailId,
+      { status: 'read', readAt: new Date(), readBy: userId },
+      { new: true }
+    );
 
     if (!emailDoc) {
       return res.status(404).json({
@@ -168,7 +187,6 @@ exports.deleteEmail = asyncHandler(async (req, res) => {
     const { emailId } = req.params;
     const userId = req.user._id;
 
-    // Find email
     const emailDoc = await Email.findById(emailId);
     if (!emailDoc) {
       return res.status(404).json({
@@ -177,16 +195,14 @@ exports.deleteEmail = asyncHandler(async (req, res) => {
       });
     }
 
-    // Check authorization (only sender can delete)
-    if (emailDoc.senderId.toString() !== userId.toString() && req.user.role !== 'admin') {
+    if (emailDoc.senderId && emailDoc.senderId.toString() !== userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this email'
       });
     }
 
-    // Delete email
-    await brevoEmailService.deleteEmail(emailId);
+    await Email.findByIdAndDelete(emailId);
 
     res.status(200).json({
       success: true,
@@ -209,8 +225,7 @@ exports.deleteEmail = asyncHandler(async (req, res) => {
  */
 exports.getUnreadCount = asyncHandler(async (req, res) => {
   try {
-    const userId = req.user._id;
-    const count = await brevoEmailService.getUnreadEmailCount(userId);
+    const count = await Email.countDocuments({ type: 'incoming', status: { $ne: 'read' } });
 
     res.status(200).json({
       success: true,
@@ -237,14 +252,15 @@ exports.searchEmails = asyncHandler(async (req, res) => {
   try {
     const { ticketId, senderEmail, recipientEmail, subject, status, type } = req.query;
 
-    const emails = await brevoEmailService.searchEmails({
-      ticketId,
-      senderEmail,
-      recipientEmail,
-      subject,
-      status,
-      type
-    });
+    const queryFilter = {};
+    if (ticketId) queryFilter.ticketId = ticketId;
+    if (senderEmail) queryFilter.senderEmail = senderEmail;
+    if (recipientEmail) queryFilter.recipientEmail = recipientEmail;
+    if (subject) queryFilter.subject = { $regex: subject, $options: 'i' };
+    if (status) queryFilter.status = status;
+    if (type) queryFilter.type = type;
+
+    const emails = await Email.find(queryFilter).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -281,9 +297,11 @@ exports.getEmailById = asyncHandler(async (req, res) => {
       });
     }
 
-    // Mark as read if incoming
     if (emailDoc.type === 'incoming' && emailDoc.status !== 'read') {
-      await brevoEmailService.markEmailAsRead(emailId, req.user._id);
+      await Email.findByIdAndUpdate(
+        emailId,
+        { status: 'read', readAt: new Date(), readBy: req.user._id }
+      );
     }
 
     res.status(200).json({
@@ -301,59 +319,57 @@ exports.getEmailById = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Webhook for incoming emails from Brevo
- * @route   POST /api/v1/email/webhook/brevo
- * @access  Public (but should be secured with Brevo IP whitelist)
+ * @desc    Webhook for incoming emails from Outlook/Other (Replaced Brevo)
+ * @route   POST /api/v1/email/webhook/incoming
+ * @access  Public
  */
 exports.brevoWebhook = asyncHandler(async (req, res) => {
   try {
     const { event, data } = req.body;
 
-    console.log('📧 Brevo Webhook received:', event);
+    console.log('📧 Webhook received:', event);
 
-    // Handle different event types
     switch (event) {
       case 'incomingEmail':
-        // Save incoming email
-        await brevoEmailService.saveIncomingEmail({
-          ticketId: data.ticketId, // Should be included in email metadata
+        await Email.create({
+          ticketId: data.ticketId || null,
           senderEmail: data.from,
           senderName: data.fromName,
+          recipientEmail: process.env.SMTP_USERNAME,
           subject: data.subject,
           body: data.text,
           htmlBody: data.html,
           messageId: data.messageId,
-          receivedAt: new Date(data.date)
+          type: 'incoming',
+          status: 'delivered',
+          sentAt: new Date(data.date),
+          receivedAt: new Date()
         });
         break;
 
       case 'delivered':
-        // Update email status
         await Email.updateOne(
-          { brevoMessageId: data.messageId },
+          { messageId: data.messageId },
           { status: 'delivered', sentAt: new Date() }
         );
         break;
 
       case 'opened':
-        // Update read status
         await Email.updateOne(
-          { brevoMessageId: data.messageId },
+          { messageId: data.messageId },
           { status: 'read', readAt: new Date() }
         );
         break;
 
       case 'clicked':
-        // Track clicks
         console.log('📎 Email link clicked:', data.messageId);
         break;
 
       case 'bounce':
       case 'complaint':
       case 'error':
-        // Handle bounce/complaint/error
         await Email.updateOne(
-          { brevoMessageId: data.messageId },
+          { messageId: data.messageId },
           {
             status: 'failed',
             error: {
@@ -369,7 +385,7 @@ exports.brevoWebhook = asyncHandler(async (req, res) => {
         console.log('⚠️ Unknown webhook event:', event);
     }
 
-    res.status(200).json({ success: true, message: 'Webhook processed' });
+    res.status(200).json({ success: true, message: 'Webhook processed' });      
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({
@@ -404,21 +420,47 @@ exports.sendEmailWithTemplate = asyncHandler(async (req, res) => {
       });
     }
 
-    // Get template (you can create a templates folder with HTML files)
-    const templateHtml = getEmailTemplate(templateName, templateVariables);
+    const templateHtml = getEmailTemplate(templateName, templateVariables);     
+    
+    const senderName = req.user.name || 'Support';
+    const senderEmail = req.user.email || process.env.SMTP_USERNAME;
 
-    // Send email
-    const emailDoc = await brevoEmailService.sendEmail({
+    const fromName = senderName || process.env.SMTP_FROM_NAME || 'Support';     
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.EMAIL_USER || process.env.SMTP_USERNAME;
+
+    const bodyText = extractTextFromHtml(templateHtml);
+
+    const mailOptions = {
+      from: `"${fromName}" <${fromEmail}>`,
+      to: recipientEmail,
+      subject: subject,
+      text: bodyText,
+      html: templateHtml,
+    };
+
+    if (attachments && attachments.length > 0) {
+       mailOptions.attachments = attachments.map(att => ({
+          filename: att.name || att.filename,
+          content: att.content || att.buffer
+       }));
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+
+    const emailDoc = await Email.create({
       ticketId,
       senderId: req.user._id,
-      senderEmail: req.user.email,
-      senderName: req.user.name,
+      senderEmail,
+      senderName,
       recipientEmail,
       recipientName,
       subject,
-      body: extractTextFromHtml(templateHtml),
+      body: bodyText,
       htmlBody: templateHtml,
-      attachments
+      messageId: info.messageId,
+      status: 'sent',
+      type: 'outgoing',
+      sentAt: new Date()
     });
 
     res.status(201).json({
@@ -445,7 +487,7 @@ function getEmailTemplate(templateName, variables) {
           <h2>Your ticket has been resolved</h2>
           <p>Hello ${variables.customerName || 'Customer'},</p>
           <p>We are happy to inform you that your ticket <strong>#${variables.ticketId}</strong> has been resolved.</p>
-          <p><strong>Resolution:</strong> ${variables.resolution || 'N/A'}</p>
+          <p><strong>Resolution:</strong> ${variables.resolution || 'N/A'}</p>  
           <p>If you have any further questions, please feel free to reach out.</p>
           <br>
           <p>Best regards,<br>Support Team</p>
@@ -470,6 +512,7 @@ function getEmailTemplate(templateName, variables) {
 
 // Helper function to extract text from HTML
 function extractTextFromHtml(html) {
+  if (!html) return '';
   return html
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')

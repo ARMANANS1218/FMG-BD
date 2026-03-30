@@ -1,5 +1,5 @@
 const Email = require('../models/Email');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 
 /**
  * Email Socket Namespace
@@ -35,7 +35,7 @@ module.exports = (io) => {
         }
 
         // Find recipient user by email
-        const recipient = await User.findOne({ email: to });
+        const recipient = await Staff.findOne({ email: to });
         if (!recipient) {
           socket.emit('email-error', { message: 'Recipient not found' });
           return;
@@ -95,7 +95,7 @@ module.exports = (io) => {
         } = data;
 
         // Find recipient
-        const recipient = await User.findOne({ email: to });
+        const recipient = await Staff.findOne({ email: to });
         if (!recipient) {
           socket.emit('email-error', { message: 'Recipient not found' });
           return;

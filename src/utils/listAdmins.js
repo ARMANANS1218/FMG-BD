@@ -4,7 +4,7 @@
  */
 
 const mongoose = require('mongoose');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
 require('dotenv').config();
 
@@ -14,7 +14,7 @@ async function listAdmins() {
     await mongoose.connect(dbUri);
     console.log('✅ Connected to database\n');
 
-    const admins = await User.find({ role: 'Admin' })
+    const admins = await Staff.find({ role: 'Admin' })
       .select('name email employee_id organizationId is_active createdAt')
       .sort({ createdAt: -1 });
     

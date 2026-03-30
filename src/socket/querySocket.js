@@ -1,5 +1,5 @@
 const Query = require('../models/Query');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Customer = require('../models/Customer');
 const jwt = require('jsonwebtoken');
 
@@ -24,7 +24,7 @@ module.exports = (io) => {
       }
 
       // Attach user info (check staff first, then customer)
-      const user = await User.findById(socket.userId).select('-password');
+      const user = await Staff.findById(socket.userId).select('-password');
       if (user) {
         socket.userName = user.name;
         socket.userRole = user.role;
@@ -129,7 +129,7 @@ module.exports = (io) => {
       try {
         const effectiveUserId = socket.userId || userId;
         // Try User (staff) first, then Customer
-        let user = await User.findById(effectiveUserId);
+        let user = await Staff.findById(effectiveUserId);
         let isCustomerUser = false;
         if (!user) {
           user = await Customer.findById(effectiveUserId);
@@ -287,7 +287,7 @@ module.exports = (io) => {
     // Accept query
     socket.on('accept-query', async ({ petitionId, agentId }) => {
       try {
-        const agent = await User.findById(agentId);
+        const agent = await Staff.findById(agentId);
         if (!agent) {
           socket.emit('error', { message: 'Agent not found' });
           return;
@@ -400,8 +400,8 @@ module.exports = (io) => {
     // Transfer query
     socket.on('transfer-query', async ({ petitionId, fromAgentId, toAgentId, reason }) => {
       try {
-        const fromAgent = await User.findById(fromAgentId);
-        const toAgent = await User.findById(toAgentId);
+        const fromAgent = await Staff.findById(fromAgentId);
+        const toAgent = await Staff.findById(toAgentId);
 
         if (!fromAgent || !toAgent) {
           socket.emit('error', { message: 'Agent not found' });
@@ -583,7 +583,7 @@ module.exports = (io) => {
     // Resolve query
     socket.on('resolve-query', async ({ petitionId, agentId }) => {
       try {
-        const agent = await User.findById(agentId);
+        const agent = await Staff.findById(agentId);
         if (!agent) {
           socket.emit('error', { message: 'Agent not found' });
           return;
@@ -682,7 +682,7 @@ module.exports = (io) => {
           return socket.emit('error', { message: 'Unauthorized' });
         }
 
-        const user = await User.findById(socket.userId);
+        const user = await Staff.findById(socket.userId);
         if (!user) return socket.emit('error', { message: 'User not found' });
 
         const query = await Query.findOne({ petitionId });

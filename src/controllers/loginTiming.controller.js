@@ -1,5 +1,5 @@
 const LoginTiming = require('../models/LoginTiming');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
 
 // GET login timings for organization
