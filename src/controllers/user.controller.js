@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
 const DailyActivity = require('../models/DailyActivity');
 const transporter = require('../config/emailConfig');
@@ -75,7 +75,7 @@ exports.register = async (req, res) => {
     // ✅ Check if trying to create another Admin in same organization
     // Exception: custom roles Client/Aggregator intentionally map to Admin permissions.
     if (role === 'Admin' && !isAdminAccessCustomRole) {
-      const existingAdmin = await User.findOne({
+      const existingAdmin = await Staff.findOne({
         role: 'Admin',
         organizationId: creatorOrganizationId,
       });
@@ -105,7 +105,7 @@ exports.register = async (req, res) => {
     }
 
     // ✅ Check duplicate email within the same organization
-    const existingUser = await User.findOne({
+    const existingUser = await Staff.findOne({
       email,
       organizationId: creatorOrganizationId,
     });
@@ -142,7 +142,7 @@ exports.register = async (req, res) => {
       }
     }
 
-    const newAuthor = await User.create({
+    const newAuthor = await Staff.create({
       user_name,
       name,
       mobile,
@@ -198,7 +198,7 @@ exports.updateProfile = async (req, res) => {
     } = req.body;
 
     // Find the user in the database
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found', status: false });
     }
@@ -268,7 +268,7 @@ exports.updateProfile = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found', status: false, data: null });
     }
@@ -297,7 +297,7 @@ exports.deleteAccount = async (req, res) => {
     const adminOrganizationId = req.user?.organizationId;
 
     // First find the user to check organization
-    const user = await User.findById(id);
+    const user = await Staff.findById(id);
     if (!user) {
       return res.status(404).json({ message: 'User not found', status: false, data: null });
     }
@@ -311,7 +311,7 @@ exports.deleteAccount = async (req, res) => {
     }
 
     // Delete the user
-    await User.findByIdAndDelete(id);
+    await Staff.findByIdAndDelete(id);
 
     res.status(200).json({ message: 'account deleted', status: true, data: user });
   } catch (error) {
@@ -322,7 +322,7 @@ exports.deleteAccount = async (req, res) => {
 //------------------< ALL USER >------------------//
 exports.getAllAgents = async (req, res) => {
   try {
-    const user = await User.find({ role: 'Agent' });
+    const user = await Staff.find({ role: 'Agent' });
     // If no data found, return 404
     if (!user.length === 0) {
       return res.status(404).json({ message: 'No data found for user.' });
@@ -381,14 +381,14 @@ exports.loginUser = async (req, res) => {
     // // 🔹 Try employee_id first if provided, then fallback to email
     // if (employee_id && employee_id.trim()) {
     //   console.log("Searching by employee_id:", employee_id.trim());
-    //   user = await User.findOne({ employee_id: employee_id.trim() });
+    //   user = await Staff.findOne({ employee_id: employee_id.trim() });
     //   console.log("User found by employee_id:", !!user);
     // }
 
     // // If no user found by employee_id, or no employee_id provided, try email
     // if (!user && email) {
     //   console.log("Searching by email:", email);
-    //   user = await User.findOne({ email });
+    //   user = await Staff.findOne({ email });
     //   console.log("User found by email:", !!user, user ? `Role: ${user.role}` : '');
     // }
 
@@ -411,7 +411,7 @@ exports.loginUser = async (req, res) => {
 
     // Search for user where BOTH employee_id AND email match (case-insensitive email)
     console.log('Searching by both employee_id AND email:', { empId, cleanEmail });
-    user = await User.findOne({
+    user = await Staff.findOne({
       employee_id: empId,
       email: { $regex: new RegExp(`^${cleanEmail}$`, 'i') },
     });
@@ -1014,7 +1014,7 @@ exports.acceptTerms = async (req, res) => {
       return res.status(401).json({ status: false, message: 'Unauthorized' });
     }
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
@@ -1052,7 +1052,7 @@ exports.logoutUser = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -1146,7 +1146,7 @@ exports.logoutUser = async (req, res) => {
 exports.toggleBreak = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const agent = await User.findById(userId);
+    const agent = await Staff.findById(userId);
 
     if (!agent) {
       return res.status(404).json({ message: 'Agent not found', status: false });
@@ -1227,7 +1227,7 @@ exports.toggleBreak = async (req, res) => {
 exports.resetWorkStatus = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found', status: false });
@@ -1277,7 +1277,7 @@ exports.resetWorkStatus = async (req, res) => {
 exports.getCurrentActiveTime = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const user = await User.findById(userId).select(
+    const user = await Staff.findById(userId).select(
       'accumulatedActiveTime lastStatusChangeTime workStatus role'
     );
 
@@ -1345,7 +1345,7 @@ exports.otpResetPassword = async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: 'Email is required.', status: false, data: null });
     }
-    const userInfo = await User.findOne({ email });
+    const userInfo = await Staff.findOne({ email });
     if (!userInfo) {
       return res.status(404).json({
         message: 'Email is not registered. Please sign up.',
@@ -1461,7 +1461,7 @@ exports.changePasswordByOtp = async (req, res) => {
 
     const newHashedPassword = await bcrypt.hash(password, 10);
     const update = { password: newHashedPassword };
-    const updatedUser = await User.findByIdAndUpdate(storedData.userId, update, {
+    const updatedUser = await Staff.findByIdAndUpdate(storedData.userId, update, {
       new: true,
     });
 
@@ -1507,7 +1507,7 @@ exports.resetEmployeePassword = async (req, res) => {
     }
 
     // First find the employee to check organization
-    const employee = await User.findById(id);
+    const employee = await Staff.findById(id);
     if (!employee) {
       return res.status(404).json({
         message: 'Employee not found',
@@ -1569,7 +1569,7 @@ exports.getAllEmployees = async (req, res) => {
     }
 
     // ✅ Fetch only employees from the same organization (include TL and Dev)
-    const employees = await User.find({
+    const employees = await Staff.find({
       role: { $in: ['Admin', 'Agent', 'QA', 'TL', 'Management', 'Dev'] },
       organizationId: organizationId,
     })
@@ -1636,7 +1636,7 @@ exports.getAllEmployees = async (req, res) => {
 //------------------< EXPORT USER DATA >------------------//
 exports.exportUserData = async (req, res) => {
   try {
-    const users = await User.find().select('-password'); // Fetch all users without passwords
+    const users = await Staff.find().select('-password'); // Fetch all users without passwords
     res.status(200).json({
       message: 'User data exported successfully',
       status: true,
@@ -1664,7 +1664,7 @@ exports.updateEmployeeStatus = async (req, res) => {
     }
 
     // First find the employee to check organization
-    const employee = await User.findById(id);
+    const employee = await Staff.findById(id);
     if (!employee) {
       return res.status(404).json({
         message: 'Employee not found',
@@ -1732,7 +1732,7 @@ exports.unblockLoginAccount = async (req, res) => {
     }
 
     // Find the employee
-    const employee = await User.findById(id);
+    const employee = await Staff.findById(id);
     if (!employee) {
       return res.status(404).json({
         message: 'Employee not found',
@@ -1827,7 +1827,7 @@ exports.updateUserAuthorizedIP = async (req, res) => {
       });
     }
 
-    const employee = await User.findById(employeeId);
+    const employee = await Staff.findById(employeeId);
 
     if (!employee) {
       return res.status(404).json({
@@ -1911,7 +1911,7 @@ exports.updateEmployeeByAdmin = async (req, res) => {
     }
 
     // Find the employee
-    const employee = await User.findById(id);
+    const employee = await Staff.findById(id);
     if (!employee) {
       return res.status(404).json({
         message: 'Employee not found',
@@ -2053,7 +2053,7 @@ exports.getEscalationHierarchy = async (req, res) => {
     }
 
     const roles = ['Agent', 'QA', 'TL', 'Dev']; // recipients shown tier-wise
-    const employees = await User.find({
+    const employees = await Staff.find({
       organizationId,
       role: { $in: roles },
     }).select('name user_name email role department tier workStatus profileImage');
@@ -2126,7 +2126,7 @@ exports.getAssignableAgents = async (req, res) => {
 
     // Fetch Agent, TL, QA, Dev from same organization (for escalation/assignment)
     // Exclude the current user from the list
-    const agents = await User.find({
+    const agents = await Staff.find({
       role: { $in: ['Agent', 'QA', 'TL', 'Dev'] },
       organizationId: organizationId,
       _id: { $ne: req.user.id },
@@ -2222,7 +2222,7 @@ exports.getOrganizationInfo = async (req, res) => {
     }
 
     // Get user with organization details
-    const user = await User.findById(userId).select('organizationId role').lean();
+    const user = await Staff.findById(userId).select('organizationId role').lean();
 
     if (!user) {
       return res.status(404).json({
@@ -2300,7 +2300,7 @@ exports.getActivityReport = async (req, res) => {
     }
 
     // Get user's organization
-    const user = await User.findById(userId).select('organizationId role').lean();
+    const user = await Staff.findById(userId).select('organizationId role').lean();
     if (!user || !user.organizationId) {
       return res.status(400).json({
         status: false,
@@ -2344,7 +2344,7 @@ exports.getActivityReport = async (req, res) => {
     const queryRole = role && validRoles.includes(role) ? role : 'Agent';
 
     // Get all users of the specified role in the organization
-    const agents = await User.find({
+    const agents = await Staff.find({
       organizationId: organizationId,
       role: queryRole,
     })

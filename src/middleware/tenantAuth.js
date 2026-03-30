@@ -9,7 +9,7 @@
 
 const jwt = require('jsonwebtoken');
 const Organization = require('../models/Organization');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 
 /**
  * Identify tenant/organization from request
@@ -134,7 +134,7 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET);
     
     // Fetch full user details
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await Staff.findById(decoded.id).select('-password');
     
     if (!user) {
       return res.status(404).json({
@@ -265,7 +265,7 @@ const optionalAuth = async (req, res, next) => {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET);
       
-      const user = await User.findById(decoded.id).select('-password');
+      const user = await Staff.findById(decoded.id).select('-password');
       
       if (user) {
         req.user = {

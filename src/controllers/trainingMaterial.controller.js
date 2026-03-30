@@ -1,5 +1,5 @@
 const TrainingMaterial = require('../models/TrainingMaterial');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const path = require('path');
 const fs = require('fs');
 const { uploadDocumentToCloudinary, deleteDocumentFromCloudinary } = require('../config/cloudinary');
@@ -8,7 +8,7 @@ const { uploadDocumentToCloudinary, deleteDocumentFromCloudinary } = require('..
 exports.getCategories = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
 
     if (!user || !['Admin', 'TL', 'QA', 'Dev'].includes(user.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
@@ -35,7 +35,7 @@ exports.getTrainingMaterials = async (req, res) => {
     const userId = req.user?.id;
     const { category } = req.query;
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user || !['Admin', 'TL', 'QA', 'Dev'].includes(user.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -69,7 +69,7 @@ exports.getTrainingMaterialById = async (req, res) => {
     const userId = req.user?.id;
     const { id } = req.params;
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user || !['Admin', 'TL', 'QA', 'Dev'].includes(user.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -101,7 +101,7 @@ exports.uploadTrainingMaterial = async (req, res) => {
 
     console.log('Upload request received:', { userId, category, title, fileExists: !!req.file });
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user || user.role !== 'Admin') {
       return res.status(403).json({ status: false, message: 'Only Admin can upload training materials' });
     }
@@ -191,7 +191,7 @@ exports.updateTrainingMaterial = async (req, res) => {
     const { id } = req.params;
     const { category, title, description } = req.body;
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user || user.role !== 'Admin') {
       return res.status(403).json({ status: false, message: 'Only Admin can update training materials' });
     }
@@ -232,7 +232,7 @@ exports.deleteTrainingMaterial = async (req, res) => {
     const userId = req.user?.id;
     const { id } = req.params;
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user || user.role !== 'Admin') {
       return res.status(403).json({ status: false, message: 'Only Admin can delete training materials' });
     }
@@ -275,7 +275,7 @@ exports.downloadTrainingMaterial = async (req, res) => {
     const userId = req.user?.id;
     const { id } = req.params;
 
-    const user = await User.findById(userId);
+    const user = await Staff.findById(userId);
     if (!user || !['Admin', 'TL', 'QA', 'Dev'].includes(user.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }

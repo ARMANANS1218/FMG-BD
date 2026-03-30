@@ -11,7 +11,7 @@
  */
 
 const mongoose = require('mongoose');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
 require('dotenv').config();
 
@@ -38,7 +38,7 @@ async function linkAdminToOrganization() {
     console.log('✅ Organization found:', organization.name);
 
     // Find the admin user
-    const admin = await User.findOne({ email: ADMIN_EMAIL, role: 'Admin' });
+    const admin = await Staff.findOne({ email: ADMIN_EMAIL, role: 'Admin' });
     if (!admin) {
       console.error('❌ Admin user not found with email:', ADMIN_EMAIL);
       console.log('\n💡 To list all admins, run:');

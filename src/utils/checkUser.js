@@ -4,7 +4,7 @@
  */
 
 const mongoose = require('mongoose');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 require('dotenv').config();
 
 async function checkUser() {
@@ -15,7 +15,7 @@ async function checkUser() {
 
     // Search by employee_id
     console.log('🔍 Searching for employee_id: EMP1001');
-    const userByEmpId = await User.findOne({ employee_id: 'EMP1001' });
+    const userByEmpId = await Staff.findOne({ employee_id: 'EMP1001' });
     if (userByEmpId) {
       console.log('✅ Found user by employee_id:');
       console.log('   Name:', userByEmpId.name);
@@ -28,7 +28,7 @@ async function checkUser() {
     }
 
     console.log('\n🔍 Searching for email: adminbitmax@gamil.com');
-    const userByEmail1 = await User.findOne({ email: 'adminbitmax@gamil.com' });
+    const userByEmail1 = await Staff.findOne({ email: 'adminbitmax@gamil.com' });
     if (userByEmail1) {
       console.log('✅ Found user by email (gamil):');
       console.log('   Name:', userByEmail1.name);
@@ -40,7 +40,7 @@ async function checkUser() {
     }
 
     console.log('\n🔍 Searching for email: adminbitmax@gmail.com (correct spelling)');
-    const userByEmail2 = await User.findOne({ email: 'adminbitmax@gmail.com' });
+    const userByEmail2 = await Staff.findOne({ email: 'adminbitmax@gmail.com' });
     if (userByEmail2) {
       console.log('✅ Found user by email (gmail):');
       console.log('   Name:', userByEmail2.name);
@@ -55,7 +55,7 @@ async function checkUser() {
     console.log('📋 All Admin users in database:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    const allAdmins = await User.find({ role: 'Admin' }).select('name email employee_id organizationId is_active');
+    const allAdmins = await Staff.find({ role: 'Admin' }).select('name email employee_id organizationId is_active');
     if (allAdmins.length === 0) {
       console.log('❌ No Admin users found in database!');
       console.log('\n💡 Solution: Create Admin via SuperAdmin panel');
@@ -73,7 +73,7 @@ async function checkUser() {
     console.log('📋 All SuperAdmin users in database:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    const allSuperAdmins = await User.find({ role: 'SuperAdmin' }).select('name email employee_id is_active');
+    const allSuperAdmins = await Staff.find({ role: 'SuperAdmin' }).select('name email employee_id is_active');
     if (allSuperAdmins.length === 0) {
       console.log('❌ No SuperAdmin users found in database!');
       console.log('\n💡 Critical: You need to create a SuperAdmin account first');

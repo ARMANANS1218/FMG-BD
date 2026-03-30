@@ -6,7 +6,7 @@
  */
 
 const mongoose = require('mongoose');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
@@ -27,7 +27,7 @@ async function createSuperAdmin() {
     console.log('✅ Connected to database\n');
 
     // Check if SuperAdmin already exists
-    const existing = await User.findOne({ email: SUPERADMIN_DATA.email });
+    const existing = await Staff.findOne({ email: SUPERADMIN_DATA.email });
     if (existing) {
       console.log('⚠️  SuperAdmin already exists with email:', SUPERADMIN_DATA.email);
       console.log('   Name:', existing.name);
@@ -37,7 +37,7 @@ async function createSuperAdmin() {
     }
 
     // Check if any SuperAdmin exists
-    const anySuperAdmin = await User.findOne({ role: 'SuperAdmin' });
+    const anySuperAdmin = await Staff.findOne({ role: 'SuperAdmin' });
     if (anySuperAdmin) {
       console.log('⚠️  A SuperAdmin account already exists:');
       console.log('   Name:', anySuperAdmin.name);
@@ -50,7 +50,7 @@ async function createSuperAdmin() {
     const hashedPassword = await bcrypt.hash(SUPERADMIN_DATA.password, 10);
 
     // Create SuperAdmin
-    const superAdmin = await User.create({
+    const superAdmin = await Staff.create({
       name: SUPERADMIN_DATA.name,
       email: SUPERADMIN_DATA.email,
       password: hashedPassword,

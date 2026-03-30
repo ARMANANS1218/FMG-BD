@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Customer = require('../models/Customer');
 const Plan = require('../models/Plan');
 const bcrypt = require('bcryptjs');
@@ -49,10 +49,10 @@ exports.customerRegister = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
-    // Try Customer first, fallback to User
+    // Try Customer first, fallback to Staff (non-customer roles)
     let user = await Customer.findById(userId).select('-password');
     if (!user) {
-      user = await User.findById(userId).select('-password');
+      user = await Staff.findById(userId).select('-password');
     }
     if (!user) {
       return res.status(404).json({ message: 'User not found', status: false, data: null });
@@ -164,7 +164,7 @@ exports.getCustomers = async (req, res) => {
 exports.createCustomer = async (req, res) => {
   try {
     const agentId = req.user?.id;
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
 
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
@@ -319,7 +319,7 @@ exports.updateCustomerDetails = async (req, res) => {
     const agentId = req.user?.id;
     const customerId = req.params.id;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -390,7 +390,7 @@ exports.deleteCustomer = async (req, res) => {
     const agentId = req.user?.id;
     const customerId = req.params.id;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -425,7 +425,7 @@ exports.searchCustomers = async (req, res) => {
     const agentId = req.user?.id;
     const searchQuery = req.query.q;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -462,7 +462,7 @@ exports.getCustomerById = async (req, res) => {
     const agentId = req.user?.id;
     const customerId = req.params.id;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Customer', 'Management', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -496,7 +496,7 @@ exports.getCustomerList = async (req, res) => {
     const limit = parseInt(req.query.limit) || 25;
     const skip = (page - 1) * limit;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Management', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -545,7 +545,7 @@ exports.addQueryToCustomer = async (req, res) => {
     const agentId = req.user?.id;
     const { customerId, petitionId } = req.body;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -613,7 +613,7 @@ exports.getCustomerQueryHistory = async (req, res) => {
     const agentId = req.user?.id;
     const customerId = req.params.customerId;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Customer', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -667,7 +667,7 @@ exports.addPlanToCustomer = async (req, res) => {
       notes,
     } = req.body;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -741,7 +741,7 @@ exports.updatePlanInHistory = async (req, res) => {
     const { customerId, planId } = req.params;
     const updateData = req.body;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -807,7 +807,7 @@ exports.getCustomerPlanHistory = async (req, res) => {
     const agentId = req.user?.id;
     const customerId = req.params.customerId;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Customer', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -839,7 +839,7 @@ exports.deletePlanFromHistory = async (req, res) => {
     const agentId = req.user?.id;
     const { customerId, planId } = req.params;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -875,7 +875,7 @@ exports.findCustomerByQuery = async (req, res) => {
     const agentId = req.user?.id;
     const { queryId } = req.params;
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }
@@ -922,7 +922,7 @@ exports.updateCustomerProfileImage = async (req, res) => {
     const { customerId, imageUrl } = req.body;
 
     // Validate agent
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent || !['Agent', 'TL', 'QA', 'Admin', 'Dev'].includes(agent.role)) {
       return res.status(403).json({ status: false, message: 'Unauthorized' });
     }

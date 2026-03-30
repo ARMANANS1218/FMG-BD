@@ -7,7 +7,7 @@
  * Body: { adminId: "xxx", organizationId: "yyy" }
  */
 
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
 
 exports.linkAdminToOrganization = async (req, res) => {
@@ -31,7 +31,7 @@ exports.linkAdminToOrganization = async (req, res) => {
     }
 
     // Find admin user
-    const admin = await User.findById(adminId);
+    const admin = await Staff.findById(adminId);
     if (!admin) {
       return res.status(404).json({ 
         status: false, 
@@ -81,7 +81,7 @@ exports.linkAdminToOrganization = async (req, res) => {
  */
 exports.getUnlinkedAdmins = async (req, res) => {
   try {
-    const unlinkedAdmins = await User.find({ 
+    const unlinkedAdmins = await Staff.find({ 
       role: 'Admin',
       $or: [
         { organizationId: null },

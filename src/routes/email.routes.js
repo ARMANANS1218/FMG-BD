@@ -4,7 +4,7 @@ const emailController = require('../controllers/email.controller');
 const { validateToken } = require('../utils/validateToken');
 
 // Public webhook endpoint (should be protected with IP whitelist in production)
-router.post('/webhook/brevo', emailController.brevoWebhook);
+// router.post('/webhook/brevo', emailController.brevoWebhook);
 
 // Protected routes - require authentication
 

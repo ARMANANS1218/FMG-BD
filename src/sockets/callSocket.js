@@ -1,6 +1,6 @@
 // sockets/callSocket.js
 const Room = require("../models/Room");
-const User = require("../models/User");
+const Staff = require("../models/Staff");
 
 /**
  * Initialize Call + WebRTC signaling socket layer
@@ -55,7 +55,7 @@ module.exports = function initCallSocket(io, connectedUsers) {
         }
 
         // Fetch caller's name for proper display
-        const caller = await User.findById(userId);
+        const caller = await Staff.findById(userId);
         const callerName = caller?.name || 'Agent';
 
         // Notify receiver if online
@@ -221,7 +221,7 @@ module.exports = function initCallSocket(io, connectedUsers) {
       console.log("❌ Disconnected:", userId || socket.id);
       if (userId) {
         connectedUsers.delete(userId);
-        socketsByUser.delete(userId);
+        socketsByStaff.delete(userId);
         io.emit("user-status", { userId, is_active: false });
       }
     });

@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Conversation = require('../models/Conversation');
 const generatePetition = require('../utils/generatePetation');
 
@@ -162,7 +162,7 @@ exports.transferPetition = async (req, res) => {
     }
 
     // ✅ Find new agent
-    const newAgent = await User.findById(newAgentId);
+    const newAgent = await Staff.findById(newAgentId);
     if (!newAgent || newAgent.role !== "Agent") {
       return res.status(404).json({ success: false, message: "Agent not found or invalid role" });
     }

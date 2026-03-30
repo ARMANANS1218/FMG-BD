@@ -1,7 +1,7 @@
 const Query = require('../models/Query');
 const Room = require('../models/Room');
 const Message = require('../models/Message');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Attendance = require('../models/Attendance');
 const QueryEvaluation = require('../models/QueryEvaluation');
 const TicketEvaluation = require('../models/TicketEvaluation');
@@ -326,7 +326,7 @@ exports.getQADashboardStats = async (req, res) => {
       ? { role: { $in: ['Agent', 'TL', 'QA'] }, organizationId }
       : { role: { $in: ['Agent', 'TL', 'QA'] } };
 
-    const allTeamMembers = await User.find(teamFilter).select('_id');
+    const allTeamMembers = await Staff.find(teamFilter).select('_id');
     const teamMemberIds = allTeamMembers.map((u) => u._id);
 
     // Team: Pending queries
@@ -488,7 +488,7 @@ exports.getDashboardStats = async (req, res) => {
 
     console.log('📊 Fetching dashboard stats for user:', userId);
 
-    const user = await User.findById(userId).select('role');
+    const user = await Staff.findById(userId).select('role');
 
     if (!user) {
       console.error('❌ User not found:', userId);
@@ -555,7 +555,7 @@ exports.getManagementDashboardSummary = async (req, res) => {
     const targetRoles = ['Agent', 'QA', 'TL'];
     const userFilter = { organizationId, role: { $in: targetRoles } };
 
-    const employees = await User.find(userFilter)
+    const employees = await Staff.find(userFilter)
       .select('_id name role workStatus is_active isBlocked profileImage')
       .sort({ createdAt: -1 })
       .lean();
@@ -704,7 +704,7 @@ exports.getManagementDashboardSummary = async (req, res) => {
 exports.getWeeklyPerformance = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const user = await User.findById(userId).select('role');
+    const user = await Staff.findById(userId).select('role');
 
     // ✅ Fixed: Array must match JavaScript's getDay() order (0=Sun, 1=Mon, ... 6=Sat)
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -804,7 +804,7 @@ exports.getWeeklyPerformance = async (req, res) => {
 exports.getPerformanceTrends = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const user = await User.findById(userId).select('role');
+    const user = await Staff.findById(userId).select('role');
 
     const trendsData = [];
     // IST today
@@ -918,17 +918,17 @@ exports.getAdminDashboardStats = async (req, res) => {
     const Customer = require('../models/Customer');
 
     const [agents, qaMembers, tlMembers, customerCount] = await Promise.all([
-      User.find({ role: 'Agent', ...userOrgFilter })
+      Staff.find({ role: 'Agent', ...userOrgFilter })
         .select(
           '_id name email is_active workStatus login_time breakLogs accumulatedActiveTime lastStatusChangeTime'
         )
         .lean(),
-      User.find({ role: 'QA', ...userOrgFilter })
+      Staff.find({ role: 'QA', ...userOrgFilter })
         .select(
           '_id name email is_active workStatus login_time breakLogs accumulatedActiveTime lastStatusChangeTime'
         )
         .lean(),
-      User.find({ role: 'TL', ...userOrgFilter }).select('_id name email is_active workStatus').lean(),
+      Staff.find({ role: 'TL', ...userOrgFilter }).select('_id name email is_active workStatus').lean(),
       Customer.countDocuments(organizationId ? { organizationId } : {}),
     ]);
 
@@ -1562,7 +1562,7 @@ exports.getAgentPerformanceList = async (req, res) => {
 
     console.log('📊 [Agent Performance] Fetching all agents performance...');
 
-    const agents = await User.find({ role: 'Agent' }).select(
+    const agents = await Staff.find({ role: 'Agent' }).select(
       '_id name email workStatus is_active login_time'
     );
 
@@ -1719,7 +1719,7 @@ exports.getQAPerformanceList = async (req, res) => {
 
     console.log('📊 [QA Performance] Fetching all QA members performance...');
 
-    const qaMembers = await User.find({ role: 'QA' }).select(
+    const qaMembers = await Staff.find({ role: 'QA' }).select(
       '_id name email workStatus is_active login_time'
     );
 
@@ -1986,7 +1986,7 @@ exports.getAdminFeedback = async (req, res) => {
     );
 
     // Get all agents
-    const agents = await User.find({ role: 'Agent' }).select('_id name email');
+    const agents = await Staff.find({ role: 'Agent' }).select('_id name email');
     const agentIds = agents.map((a) => a._id);
 
     // Get all queries with feedback (filtered by date)

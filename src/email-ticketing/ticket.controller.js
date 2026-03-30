@@ -2,7 +2,7 @@ const asyncHandler = require('express-async-handler');
 const EmailTicket = require('./models/Ticket');
 const EmailTicketMessage = require('./models/TicketMessage');
 const TicketEvaluation = require('../models/TicketEvaluation');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const {
   createInternalTicket,
   addTicketMessage,
@@ -542,9 +542,9 @@ exports.assignTicket = asyncHandler(async (req, res) => {
 
   // Record in transfer history if it's a re-assignment (escalation) or new assignment
   if (assignedToId && assignedToId.toString() !== (previousAgent ? previousAgent.toString() : '')) {
-     const toAgentUser = await User.findById(assignedToId).select('name alias');
-     const fromAgentUser = previousAgent ? await User.findById(previousAgent).select('name alias') : null;
-     const byUser = await User.findById(currentUserId).select('name alias');
+     const toAgentUser = await Staff.findById(assignedToId).select('name alias');
+     const fromAgentUser = previousAgent ? await Staff.findById(previousAgent).select('name alias') : null;
+     const byUser = await Staff.findById(currentUserId).select('name alias');
 
      // If using transferHistorySchema from model:
      // status: { type: String, enum: ['Requested', 'Accepted', 'Rejected'], default: 'Requested' }
@@ -916,7 +916,7 @@ exports.createTicketFromWidget = [
               ${html || message}
             </div>
             
-            <p><a href="https://btclienterminal.com/118029-TX/" style="background: #007cba; color: white; padding: 10px 20px; text-decoration: none;">View in Dashboard</a></p>
+            <p><a href="https://btclienterminal.com/FMG/" style="background: #007cba; color: white; padding: 10px 20px; text-decoration: none;">View in Dashboard</a></p>
           </div>
         `,
             text: `New Support Ticket: ${ticketId}\n\nCustomer: ${
@@ -1191,13 +1191,13 @@ exports.replyToTicketFromWidget = [
                 ${html || message}
               </div>
               
-              <p style="margin: 20px 0;"><a href="https://btclienterminal.com/118029-TX/" style="background: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View in Dashboard</a></p>
+              <p style="margin: 20px 0;"><a href="https://btclienterminal.com/FMG/" style="background: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View in Dashboard</a></p>
               
               <hr style="margin: 20px 0;">
               <p style="font-size: 12px; color: #666;">Please respond to this customer's inquiry.</p>
             </div>
           `,
-              text: `🔔 Customer Reply Alert\n\nTicket: ${ticket.ticketId}\nCustomer: ${ticket.customerName} (${ticket.customerEmail})\nSubject: ${ticket.subject}\nPriority: ${ticket.priority}\n\nCustomer's Reply:\n${message}\n\n⚡ Action Required: Please respond to this customer's inquiry.\n\nView Dashboard: https://btclienterminal.com/118029-TX/`,
+              text: `🔔 Customer Reply Alert\n\nTicket: ${ticket.ticketId}\nCustomer: ${ticket.customerName} (${ticket.customerEmail})\nSubject: ${ticket.subject}\nPriority: ${ticket.priority}\n\nCustomer's Reply:\n${message}\n\n⚡ Action Required: Please respond to this customer's inquiry.\n\nView Dashboard: https://btclienterminal.com/FMG/`,
               headers,
               attachments,
             });
@@ -1567,7 +1567,7 @@ exports.listTicketsDual = asyncHandler(async (req, res, next) => {
 exports.getTicketStats = asyncHandler(async (req, res) => {
   try {
     const organization = getOrgId(req);
-    const User = require('../models/User');
+    const Staff = require('../models/Staff');
     const mongoose = require('mongoose');
 
     if (!organization) {
@@ -1664,7 +1664,7 @@ exports.getTicketStats = asyncHandler(async (req, res) => {
     const agentIds = agentStats
       .map((stat) => (mongoose.Types.ObjectId.isValid(stat._id) ? stat._id : null))
       .filter(Boolean);
-    const agents = await User.find({ _id: { $in: agentIds } }).select('name alias email role');
+    const agents = await Staff.find({ _id: { $in: agentIds } }).select('name alias email role');
     const agentMap = {};
     agents.forEach((agent) => {
       agentMap[agent._id.toString()] = {
@@ -1824,13 +1824,13 @@ exports.getTicketStats = asyncHandler(async (req, res) => {
 
     // Agent, QA, TL counts
     const [agentCount, qaCount, tlCount] = await Promise.all([
-      User.countDocuments({ organizationId: orgId, role: 'Agent' }),
-      User.countDocuments({ organizationId: orgId, role: 'QA' }),
-      User.countDocuments({ organizationId: orgId, role: 'TL' }),
+      Staff.countDocuments({ organizationId: orgId, role: 'Agent' }),
+      Staff.countDocuments({ organizationId: orgId, role: 'QA' }),
+      Staff.countDocuments({ organizationId: orgId, role: 'TL' }),
     ]);
 
     // Online agents count
-    const onlineAgents = await User.countDocuments({
+    const onlineAgents = await Staff.countDocuments({
       organizationId: orgId,
       role: { $in: ['Agent', 'QA', 'TL'] },
       workStatus: 'active',
@@ -2174,8 +2174,8 @@ exports.transferTicket = asyncHandler(async (req, res) => {
   const { ticketId } = req.params;
   const { toAgentId, reason, notes } = req.body;
   
-  const currentAgent = await User.findById(currentAgentId);
-  const toAgent = await User.findById(toAgentId);
+  const currentAgent = await Staff.findById(currentAgentId);
+  const toAgent = await Staff.findById(toAgentId);
 
   if (!currentAgent || !toAgent) {
     return res.status(404).json({ success: false, message: 'User not found' });
@@ -2359,7 +2359,7 @@ exports.acceptTransferRequest = asyncHandler(async (req, res) => {
   const agentId = req.user?.id || req.user?._id;
   const { ticketId } = req.params;
 
-  const agent = await User.findById(agentId);
+  const agent = await Staff.findById(agentId);
   if (!agent) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }

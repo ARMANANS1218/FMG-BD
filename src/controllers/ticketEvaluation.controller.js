@@ -1,6 +1,6 @@
 const Ticket = require('../models/Ticket'); // Legacy chat tickets
 const EmailTicket = require('../email-ticketing/models/Ticket'); // Email tickets (EML-...)
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const TicketEvaluation = require('../models/TicketEvaluation');
 const XLSX = require('xlsx');
 
@@ -48,7 +48,7 @@ exports.evaluateTicket = async (req, res) => {
     const agentId = resolved.type === 'email'
       ? ticket.assignedTo || null
       : (Array.isArray(ticket.agentId) && ticket.agentId.length > 0 ? ticket.agentId[0] : ticket.agentId || null);
-    const agent = agentId ? await User.findById(agentId) : null;
+    const agent = agentId ? await Staff.findById(agentId) : null;
 
     // Upsert per evaluator per ticket
     const existing = await TicketEvaluation.findOne({ ticketRef: ticket._id, evaluatedBy: req.user.id });

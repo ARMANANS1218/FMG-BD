@@ -1,5 +1,5 @@
 const Organization = require('../models/Organization');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const { decryptPassword } = require('../utils/encryption');
 
 /**
@@ -193,7 +193,7 @@ exports.getAllEmployeesWithPasswords = async (req, res) => {
 
     // Get all employees in the admin's organization
     // Include encryptedPassword field (normally excluded)
-    const employees = await User.find({
+    const employees = await Staff.find({
       organizationId: organizationId,
       role: { $in: ['Agent', 'TL', 'QA', 'Admin', 'Management', 'Dev'] }
     })
