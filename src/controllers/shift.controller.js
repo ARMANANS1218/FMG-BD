@@ -1,5 +1,5 @@
 const Shift = require("../models/Shift");
-const User = require("../models/User");
+const Staff = require("../models/Staff");
 
 // Create a new shift
 exports.createShift = async (req, res) => {

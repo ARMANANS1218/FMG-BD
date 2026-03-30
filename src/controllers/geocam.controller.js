@@ -7,15 +7,15 @@ const { uploadToCloudinary } = require('../config/cloudinary');
 const FRONTEND_BASE_URL =
   process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://btclienterminal.com/118029-TX'
-    : 'http://localhost:5173/118029-TX');
+    ? 'https://btclienterminal.com/FMG'
+    : 'http://localhost:5173/FMG');
 const FRONTEND_URLS = {
-  primary: FRONTEND_BASE_URL.includes('118029-TX')
+  primary: FRONTEND_BASE_URL.includes('FMG')
     ? FRONTEND_BASE_URL
-    : `${FRONTEND_BASE_URL}/118029-TX`,
-  vercel: 'https://live-chat-crm.vercel.app/118029-TX',
-  localhost: 'http://localhost:5173/118029-TX',
-  production: 'https://btclienterminal.com/118029-TX',
+    : `${FRONTEND_BASE_URL}/FMG`,
+  vercel: 'https://live-chat-crm.vercel.app/FMG',
+  localhost: 'http://localhost:5173/FMG',
+  production: 'https://btclienterminal.com/FMG',
 };
 const GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY;
 

@@ -1,5 +1,5 @@
 const Query = require('../models/Query');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const Customer = require('../models/Customer');
 const QueryEvaluation = require('../models/QueryEvaluation');
 const generatePetition = require('../utils/generatePetation');
@@ -117,7 +117,7 @@ exports.createQuery = async (req, res) => {
 
       // 🎯 1. Find all "Available" agents in DB (Active status + Correct Role)
       // For NEW queries: Only notify Agents (not TL/QA - they only handle escalations)
-      const availableUsers = await User.find({
+      const availableUsers = await Staff.find({
         organizationId: customer.organizationId,
         role: 'Agent', // ✅ Only Agents get new query notifications
         workStatus: 'active',
@@ -960,7 +960,7 @@ exports.acceptQuery = async (req, res) => {
       return res.status(401).json({ status: false, message: 'User not authenticated' });
     }
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     console.log('Accept Query - Agent found:', agent ? agent.name : 'Not found');
 
     if (!agent) {
@@ -1144,7 +1144,7 @@ exports.sendQueryMessage = async (req, res) => {
     const { message } = req.body;
 
     // Try User (agent/admin) first, then Customer
-    let user = await User.findById(userId);
+    let user = await Staff.findById(userId);
     let isCustomerUser = false;
     if (!user) {
       user = await Customer.findById(userId);
@@ -1282,8 +1282,8 @@ exports.transferQuery = async (req, res) => {
     const { petitionId } = req.params;
     const { toAgentId, reason } = req.body;
 
-    const currentAgent = await User.findById(currentAgentId);
-    const toAgent = await User.findById(toAgentId);
+    const currentAgent = await Staff.findById(currentAgentId);
+    const toAgent = await Staff.findById(toAgentId);
 
     if (!currentAgent || !toAgent) {
       return res.status(404).json({ status: false, message: 'Agent not found' });
@@ -1598,7 +1598,7 @@ exports.resolveQuery = async (req, res) => {
     const { petitionId } = req.params;
     const { devRemark } = req.body || {};
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent) {
       return res.status(404).json({ status: false, message: 'Agent not found' });
     }
@@ -1769,7 +1769,7 @@ exports.addOrUpdateDevRemark = async (req, res) => {
       });
     }
 
-    const devUser = await User.findById(userId).select('name alias role');
+    const devUser = await Staff.findById(userId).select('name alias role');
     const devName = devUser?.alias || devUser?.name || req.user?.name || 'Dev';
 
     query.devResolutionRemark = {
@@ -2000,7 +2000,7 @@ exports.getAvailableAgents = async (req, res) => {
   try {
     const { category } = req.query;
     const requesterId = req.user?.id;
-    const requester = requesterId ? await User.findById(requesterId) : null;
+    const requester = requesterId ? await Staff.findById(requesterId) : null;
 
     const filter = {
       role: { $in: ['Agent', 'QA', 'TL', 'Dev'] },
@@ -2016,7 +2016,7 @@ exports.getAvailableAgents = async (req, res) => {
       filter.organizationId = requester.organizationId;
     }
 
-    const agents = await User.find(filter)
+    const agents = await Staff.find(filter)
       .select('name email role department workStatus profileImage tier')
       .sort({ workStatus: 1, name: 1 });
 

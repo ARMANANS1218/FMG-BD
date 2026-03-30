@@ -2,7 +2,7 @@
 // Emits force_logout event to users when login window ends
 
 const LoginTiming = require('../models/LoginTiming');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 
 const normalizeCustomRole = (value = '') => {
   const normalized = String(value).trim().toLowerCase();
@@ -57,7 +57,7 @@ const initLoginTimingAutoLogout = (io) => {
         // Force logout at or after end time (more reliable than exact-minute equality)
         if (currentTotalMinutes >= endTotalMinutes) {
           // Find active users in this organization and filter by effective restricted role
-          const orgUsers = await User.find({
+          const orgUsers = await Staff.find({
             organizationId: timing.organizationId,
             is_active: true,
           });
@@ -118,7 +118,7 @@ const setupLoginTimingSocketHandler = (io) => {
     // Optional: Check if user should be logged out on connection
     socket.on('check-login-status', async (data, callback) => {
       try {
-        const user = await User.findById(userId).select('organizationId role customRole');
+        const user = await Staff.findById(userId).select('organizationId role customRole');
         if (!user) {
           callback({ shouldLogout: true, reason: 'user_not_found' });
           return;

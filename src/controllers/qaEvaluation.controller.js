@@ -1,5 +1,5 @@
 const Query = require('../models/Query');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const QueryEvaluation = require('../models/QueryEvaluation');
 const XLSX = require('xlsx');
 

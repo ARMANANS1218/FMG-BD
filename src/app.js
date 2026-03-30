@@ -40,6 +40,7 @@ const leaveRoutes = require("./routes/leave.routes");
 const forgotPasswordRoutes = require("./routes/forgotPassword.routes");
 const agentPerformanceRoutes = require("./routes/agentPerformance.routes");
 const planRoutes = require("./routes/plan.routes");
+const Staff = require("./models/Staff");
 const User = require("./models/User");
 const initCallSocket = require("./sockets/callSocket");
 const initQuerySocket = require("./socket/querySocket");
@@ -72,14 +73,14 @@ const prodHosts = [
   "https://crm-wdget-shyeyes-fd.vercel.app",
   "https://btclienterminal.com",
   "http://btclienterminal.com",
-  "https://btclienterminal.com/118029-TX",
-  "http://btclienterminal.com/118029-TX/",
+  "https://btclienterminal.com/FMG",
+  "http://btclienterminal.com/FMG/",
   "https://btclienterminal.com",
   "https://www.btclienterminal.com",
   "https://chatnexusterminal.uk",
   
 ];
-const pathVariants = (base) => [base, base + '/', base + '/118029-TX', base + '/118029-TX/', base + '/118029/TX', base + '/118029/TX'];
+const pathVariants = (base) => [base, base + '/', base + '/FMG', base + '/FMG/', base + '/118029/TX', base + '/118029/TX'];
 const shyeyesVariants = (base) => [base, base + '/', base + '/shyeyes', base + '/shyeyes/'];
 
 const allowedOrigins = [
@@ -197,7 +198,11 @@ io.use(async (socket, next) => {
     if (!socket.userId) return next();
 
     // Optional: attach some user props
-    const user = await User.findById(socket.userId).select("-password");
+    // Staff-first lookup (all non-customer roles), fallback to User (Customer)
+    let user = await Staff.findById(socket.userId).select("-password");
+    if (!user) {
+      user = await User.findById(socket.userId).select("-password");
+    }
     socket.user_name = user?.user_name;
     socket.name = user?.name;
     next();

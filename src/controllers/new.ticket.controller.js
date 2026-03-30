@@ -4,7 +4,7 @@ const emailReplyTemplate = require("../utils/emailReplyTemplate");
 const { sendEmail } = require("../utils/emailService");
 const emailTemplate = require("../utils/emailTemplate");
 const generateTicket = require("../utils/generateTicket");
-const User =require('../models/User');\nconst Customer = require('../models/Customer');
+const User =require('../models/Staff');\nconst Customer = require('../models/Customer');
 
 exports.createCustomerTicket = async (req, res) => {
   const { email, subject, message } = req.body;
@@ -14,7 +14,7 @@ exports.createCustomerTicket = async (req, res) => {
   }
   const ticketId = generateTicket();
   // Look up customer by email (check Customer model first, then User as fallback)
-  const customerRecord = await Customer.findOne({ email }) || await User.findOne({ email });
+  const customerRecord = await Customer.findOne({ email }) || await Staff.findOne({ email });
   try {
     const ticket = await TicketNew.create({
       email,
@@ -79,7 +79,7 @@ exports.agentReply = async (req, res) => {
     await ticket.save();
 
     // Get agent for alias name and notify customer by email
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     const agentDisplayName = agent?.alias || agent?.name || 'Support Agent';
     await sendEmail(ticket.email, `Reply to Ticket: ${ticketId}`, emailReplyTemplate(ticketId, message, agentDisplayName));
 

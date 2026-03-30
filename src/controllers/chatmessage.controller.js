@@ -1,5 +1,5 @@
 const ChatMessage = require('../models/ChatMessage');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const generatePetition = require('../utils/generatePetation');
 
 exports.startConversation = async (req, res) => {
@@ -153,7 +153,7 @@ exports.transferPetition = async (req, res) => {
       return res.status(400).json({ success: false, message: "petitionId and newAgentId are required" });
     }
 
-    const newAgent = await User.findById(newAgentId);
+    const newAgent = await Staff.findById(newAgentId);
     if (!newAgent || newAgent.role !== "Agent") {
       return res.status(404).json({ success: false, message: "Agent not found or invalid role" });
     }

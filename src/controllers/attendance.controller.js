@@ -1,6 +1,6 @@
 const Attendance = require('../models/Attendance');
 const Shift = require('../models/Shift');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
 const moment = require('moment-timezone');
 

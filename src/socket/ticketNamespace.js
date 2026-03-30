@@ -1,7 +1,7 @@
 const EmailTicket = require('../email-ticketing/models/Ticket');
 const EmailTicketMessage = require('../email-ticketing/models/TicketMessage');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 
 module.exports = (io) => {
   const ticketNamespace = io.of('/ticket');
@@ -24,7 +24,7 @@ module.exports = (io) => {
       }
 
       // Attach user info
-      const user = await User.findById(socket.userId).select('-password');
+      const user = await Staff.findById(socket.userId).select('-password');
       if (user) {
         socket.userName = user.alias || user.name;
         socket.userRole = user.role;

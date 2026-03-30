@@ -1,7 +1,7 @@
 const Notification = require("../models/Notification");
 const Ticket = require("../models/Ticket");
 const { sendEmail } = require("../utils/emailService");
-const User = require("../models/User");
+const Staff = require("../models/Staff");
 const generateTicket = require("../utils/generateTicket");
 const emailReplyTemplate = require("../utils/emailReplyTemplate");
 
@@ -16,7 +16,7 @@ exports.createTicket = async (req, res) => {
 
   try {
     // 1. Verify assigned agent
-    const assignedAgent = await User.findById(agentId);
+    const assignedAgent = await Staff.findById(agentId);
     if (!assignedAgent) {
       return res.status(404).json({ status: false, message: "Assigned agent not found" });
     }
@@ -37,7 +37,7 @@ exports.createTicket = async (req, res) => {
     });
 
     // 3. Notify only agents from SAME organization
-    const agents = await User.find({ 
+    const agents = await Staff.find({ 
       role: 'Agent', 
       organizationId: assignedAgent.organizationId // ✅ Filter by organization
     }).select('_id email');
@@ -149,7 +149,7 @@ exports.replyToTicket = async (req, res) => {
     const ticket = await Ticket.findOne({ ticketId });
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    const agent = await User.findById(agentId);
+    const agent = await Staff.findById(agentId);
     if (!agent) return res.status(403).json({ message: "Unauthorized" });
 
     // Append reply to ticket
@@ -213,7 +213,7 @@ exports.forwardTicket = async (req, res) => {
     await ticket.save();
 
     // Notify the new agent
-    const newAgent = await User.findById(toAgentId);
+    const newAgent = await Staff.findById(toAgentId);
     if (newAgent) {
       await Notification.create({
         message: `Ticket #${ticketId} has been escalated to you`,

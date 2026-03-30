@@ -1,7 +1,7 @@
 const Query = require('../models/Query');
 const Ticket = require('../models/Ticket');
 const EmailTicket = require('../email-ticketing/models/Ticket');
-const User = require('../models/User');
+const Staff = require('../models/Staff');
 
 /**
  * Get combined agent performance (Tickets + Queries)
@@ -38,7 +38,7 @@ exports.getAgentPerformance = async (req, res) => {
     } else {
       agentFilter = { role: 'Agent' };
     }
-    const agents = await User.find(agentFilter).select(
+    const agents = await Staff.find(agentFilter).select(
       '_id name email alias is_active role profileImage'
     );
 
@@ -216,7 +216,7 @@ exports.getAllAgentPerformanceData = async (req, res) => {
       agentFilter.organizationId = orgId;
     }
 
-    const agents = await User.find(agentFilter).select(
+    const agents = await Staff.find(agentFilter).select(
       '_id name email alias is_active role organizationId profileImage'
     );
 

@@ -1,5 +1,5 @@
 const Leave = require("../models/Leave");
-const User = require("../models/User");
+const Staff = require("../models/Staff");
 const moment = require('moment-timezone');
 
 // Calculate number of days between two dates
