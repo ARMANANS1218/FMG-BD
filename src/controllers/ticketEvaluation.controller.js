@@ -251,3 +251,126 @@ exports.exportXLSX = async (req, res) => {
     res.status(500).json({ status: false, message: 'Failed to export XLSX' });
   }
 };
+
+// Weighted ticket QA scorecard (UK FMCG chat quality framework)
+exports.getWeightedScorecard = async (req, res) => {
+  if (!ensureQAOrTL(req, res)) return;
+  try {
+    const { agentId, from, to } = req.query;
+    const filter = {};
+    if (agentId) filter.agentId = agentId;
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) filter.createdAt.$lte = new Date(to);
+    }
+
+    const items = await TicketEvaluation.find(filter)
+      .populate('evaluatedBy', 'name email role')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const weights = {
+      compliance: 20,
+      communication: 20,
+      knowledge: 15,
+      slaEfficiency: 15,
+      resolutionQuality: 20,
+      softSkills: 10,
+    };
+
+    const getScore = (ev, key) => Math.max(0, Math.min(100, Number(ev?.[key] ?? 0) * 10));
+    const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+
+    const rows = items.map((ev) => {
+      const compliance = avg([
+        getScore(ev, 'dataPrivacy'),
+        getScore(ev, 'authenticationFollowed'),
+        getScore(ev, 'policyAdherence'),
+      ]);
+      const communication = avg([
+        getScore(ev, 'grammarSpelling'),
+        getScore(ev, 'sentenceStructure'),
+        getScore(ev, 'professionalLanguage'),
+        getScore(ev, 'toneCourtesy'),
+      ]);
+      const knowledge = avg([
+        getScore(ev, 'issueIdentified'),
+        getScore(ev, 'issueAcknowledged'),
+        getScore(ev, 'sopCompliance'),
+      ]);
+      const slaEfficiency = avg([
+        getScore(ev, 'firstContactResolution'),
+        getScore(ev, 'properFormatting'),
+        getScore(ev, 'readableStructure'),
+      ]);
+      const resolutionQuality = avg([
+        getScore(ev, 'correctResolution'),
+        getScore(ev, 'allQueriesAddressed'),
+        getScore(ev, 'firstContactResolution'),
+      ]);
+      const softSkills = avg([
+        getScore(ev, 'empathyStatement'),
+        getScore(ev, 'ownershipTaken'),
+        getScore(ev, 'reassuranceProvided'),
+      ]);
+
+      const weighted = {
+        compliance: Number(((compliance * weights.compliance) / 100).toFixed(2)),
+        communication: Number(((communication * weights.communication) / 100).toFixed(2)),
+        knowledge: Number(((knowledge * weights.knowledge) / 100).toFixed(2)),
+        slaEfficiency: Number(((slaEfficiency * weights.slaEfficiency) / 100).toFixed(2)),
+        resolutionQuality: Number(((resolutionQuality * weights.resolutionQuality) / 100).toFixed(2)),
+        softSkills: Number(((softSkills * weights.softSkills) / 100).toFixed(2)),
+      };
+
+      const total = Number(
+        (
+          weighted.compliance +
+          weighted.communication +
+          weighted.knowledge +
+          weighted.slaEfficiency +
+          weighted.resolutionQuality +
+          weighted.softSkills
+        ).toFixed(2)
+      );
+
+      return {
+        ticketId: ev.ticketId,
+        agentId: ev.agentId,
+        agentName: ev.agentName,
+        evaluatorRole: ev.evaluatorRole,
+        evaluatedBy: ev.evaluatedBy?.name || 'N/A',
+        createdAt: ev.createdAt,
+        rawCategoryPercentages: {
+          compliance: Number(compliance.toFixed(2)),
+          communication: Number(communication.toFixed(2)),
+          knowledge: Number(knowledge.toFixed(2)),
+          slaEfficiency: Number(slaEfficiency.toFixed(2)),
+          resolutionQuality: Number(resolutionQuality.toFixed(2)),
+          softSkills: Number(softSkills.toFixed(2)),
+        },
+        weightedMarks: weighted,
+        totalScore100: total,
+      };
+    });
+
+    const overall = rows.length
+      ? Number((rows.reduce((sum, r) => sum + r.totalScore100, 0) / rows.length).toFixed(2))
+      : 0;
+
+    return res.json({
+      status: true,
+      framework: 'UK FMCG Ticket QA Scorecard',
+      weights,
+      summary: {
+        evaluations: rows.length,
+        averageScore: overall,
+      },
+      data: rows,
+    });
+  } catch (err) {
+    console.error('ticket getWeightedScorecard error:', err);
+    return res.status(500).json({ status: false, message: 'Failed to compute ticket weighted scorecard' });
+  }
+};

@@ -10,6 +10,7 @@ router.post('/evaluate', validateToken, ctrl.createEvaluation);
 router.get('/by-petition/:petitionId', validateToken, ctrl.getByPetition);
 router.get('/list', validateToken, ctrl.listEvaluations);
 router.get('/aggregates', validateToken, ctrl.listAgentAggregates);
+router.get('/scorecard/chat', validateToken, ctrl.getWeightedScorecard);
 router.get('/export/csv', validateToken, ctrl.exportCSV);
 router.get('/export/xlsx', validateToken, ctrl.exportXLSX);
 
@@ -18,6 +19,7 @@ router.post('/ticket/evaluate', validateToken, ticketCtrl.evaluateTicket);
 router.get('/ticket/by-ticket/:ticketId', validateToken, ticketCtrl.getByTicket);
 router.get('/ticket/list', validateToken, ticketCtrl.listEvaluations);
 router.get('/ticket/aggregates', validateToken, ticketCtrl.listAggregates);
+router.get('/ticket/scorecard', validateToken, ticketCtrl.getWeightedScorecard);
 router.get('/ticket/export/csv', validateToken, ticketCtrl.exportCSV);
 router.get('/ticket/export/xlsx', validateToken, ticketCtrl.exportXLSX);
 

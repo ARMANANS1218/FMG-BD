@@ -122,8 +122,22 @@ const querySchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['Accounts', 'Technicals', 'Billings', 'Supports'],
-    default: 'Supports'
+    enum: [
+      'Accounts',
+      'Technicals',
+      'Billings',
+      'Supports',
+      'Quality Issue',
+      'Damaged Product',
+      'Missing Item',
+      'Expired Product',
+      'Allergy Concern',
+      'Packaging Issue',
+      'Refund Request',
+      'Replacement Request',
+      'General Inquiry',
+    ],
+    default: 'General Inquiry'
   },
   priority: {
     type: String,
@@ -134,6 +148,22 @@ const querySchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Accepted', 'In Progress', 'Resolved', 'Expired', 'Transferred'],
     default: 'Pending'
+  },
+  firstResponseAt: {
+    type: Date,
+    default: null,
+  },
+  firstResponseTimeSeconds: {
+    type: Number,
+    default: null,
+  },
+  slaTargetSeconds: {
+    type: Number,
+    default: 60,
+  },
+  isBreached: {
+    type: Boolean,
+    default: false,
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
@@ -257,6 +287,7 @@ querySchema.index({ organizationId: 1, createdAt: -1 });
 querySchema.index({ organizationId: 1, assignedTo: 1 });
 querySchema.index({ organizationId: 1, category: 1 });
 querySchema.index({ organizationId: 1, petitionId: 1 });
+querySchema.index({ organizationId: 1, isBreached: 1, createdAt: -1 });
 querySchema.index({ organizationId: 1, 'transferHistory.fromAgent': 1 });
 querySchema.index({ organizationId: 1, 'transferHistory.toAgent': 1 });
 querySchema.index({ petitionId: 1 });
@@ -268,8 +299,31 @@ querySchema.index({ createdAt: -1 });
 
 // Middleware to update lastActivityAt on new messages
 querySchema.pre('save', function(next) {
+  if (!this.slaTargetSeconds || Number.isNaN(this.slaTargetSeconds)) {
+    this.slaTargetSeconds = Number(process.env.UK_CHAT_FRT_TARGET_SECONDS) || 60;
+  }
+
   if (this.isModified('messages')) {
     this.lastActivityAt = new Date();
+
+    if (!this.firstResponseAt && Array.isArray(this.messages) && this.messages.length > 0) {
+      const firstAgentReply = this.messages.find(
+        (msg) => msg?.senderRole && ['Agent', 'QA', 'TL', 'Admin', 'Dev'].includes(msg.senderRole)
+      );
+
+      if (firstAgentReply?.timestamp) {
+        const queryCreatedAt = this.createdAt ? new Date(this.createdAt) : new Date();
+        const responseAt = new Date(firstAgentReply.timestamp);
+        const responseSeconds = Math.max(
+          0,
+          Math.round((responseAt.getTime() - queryCreatedAt.getTime()) / 1000)
+        );
+
+        this.firstResponseAt = responseAt;
+        this.firstResponseTimeSeconds = responseSeconds;
+        this.isBreached = responseSeconds > this.slaTargetSeconds;
+      }
+    }
   }
   next();
 });

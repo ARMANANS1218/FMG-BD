@@ -61,6 +61,43 @@ const CustomerSchema = new mongoose.Schema(
       enum: ['registered', 'guest'],
       default: 'registered',
     },
+    fmcgCustomerType: {
+      type: String,
+      enum: ['End Consumer', 'Retailer', 'Distributor', 'Online Buyer', null],
+      default: 'End Consumer',
+    },
+    caseId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    contactId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    preferredContactMethod: {
+      type: String,
+      enum: ['Chat', 'Email', 'Phone', null],
+      default: 'Chat',
+    },
+    consentCaptured: {
+      type: Boolean,
+      default: false,
+    },
+    consentTimestamp: {
+      type: Date,
+      default: null,
+    },
+    vulnerableCustomerFlag: {
+      type: Boolean,
+      default: false,
+    },
+    dataRetentionTimerMonths: {
+      type: Number,
+      enum: [6, 12, 24],
+      default: 24,
+    },
     guestIdentifier: {
       type: String,
     },

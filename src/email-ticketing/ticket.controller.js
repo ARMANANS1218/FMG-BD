@@ -718,7 +718,8 @@ exports.createTicketFromWidget = [
       message,
       html,
       priority = 'medium',
-      category = 'general',
+      category = 'General Inquiry',
+      orderNumber,
       customerEmail,
       customerName,
     } = req.body;
@@ -769,6 +770,16 @@ exports.createTicketFromWidget = [
 
     // Map category to teamInbox
     const categoryToTeamInbox = {
+      'Quality Issue': 'quality-team',
+      'Damaged Product': 'quality-team',
+      'Missing Item': 'supply-chain',
+      'Expired Product': 'quality-team',
+      'Allergy Concern': 'quality-team',
+      'Packaging Issue': 'quality-team',
+      'Refund Request': 'refund-desk',
+      'Replacement Request': 'refund-desk',
+      'General Inquiry': 'general',
+      // legacy mappings (backward compatibility)
       general: 'general',
       technical: 'technical-issue',
       billing: 'billing',
@@ -786,6 +797,7 @@ exports.createTicketFromWidget = [
       subject,
       customerEmail,
       customerName: customerName || customerEmail.split('@')[0],
+      orderNumber: orderNumber || null,
       channel: 'widget',
       status: 'pending', // New tickets start as pending until assigned
       priority,
@@ -1837,15 +1849,15 @@ exports.getTicketStats = asyncHandler(async (req, res) => {
     });
 
     // Calculate CSAT Score from ticket evaluations
-    const ticketEvaluations = await TicketEvaluation.find({
+    const ticketRatings = await TicketEvaluation.find({
       organization: orgId,
       rating: { $exists: true, $ne: null },
     }).select('rating');
 
     let csatScore = 0;
-    if (ticketEvaluations.length > 0) {
-      const totalRating = ticketEvaluations.reduce((sum, eval) => sum + (eval.rating || 0), 0);
-      const avgRating = totalRating / ticketEvaluations.length;
+    if (ticketRatings.length > 0) {
+      const totalRating = ticketRatings.reduce((sum, item) => sum + (item.rating || 0), 0);
+      const avgRating = totalRating / ticketRatings.length;
       csatScore = Math.round((avgRating / 5) * 100); // Convert to percentage
     }
 
@@ -2549,5 +2561,134 @@ exports.addRemark = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Remark added successfully',
+  });
+});
+
+// PUT /tickets/:id/refund-workflow
+exports.updateRefundWorkflow = asyncHandler(async (req, res) => {
+  const organization = getOrgId(req);
+  const { id } = req.params;
+  const {
+    workflowType,
+    decision,
+    refundAmountGbp,
+    compensationType,
+    courierRequired,
+    returnLabelSent,
+    resolutionType,
+    refundApprovalAuthorizationId,
+    notes,
+  } = req.body;
+
+  const userId = req.user?.id || req.user?._id;
+  const userRole = req.user?.role;
+  const userName = req.user?.alias || req.user?.name || userRole;
+  const approverRoles = ['TL', 'Admin', 'SuperAdmin'];
+  const threshold = Number(process.env.REFUND_TL_APPROVAL_THRESHOLD_GBP) || 50;
+
+  if (!['refund', 'replacement'].includes(String(workflowType || '').toLowerCase())) {
+    return res.status(400).json({ success: false, message: 'workflowType must be refund or replacement' });
+  }
+
+  if (!['requested', 'approved', 'rejected'].includes(String(decision || '').toLowerCase())) {
+    return res.status(400).json({ success: false, message: 'decision must be requested, approved, or rejected' });
+  }
+
+  const ticket = await EmailTicket.findOne({ ticketId: id, organization });
+  if (!ticket) {
+    return res.status(404).json({ success: false, message: 'Ticket not found' });
+  }
+
+  const normalizedWorkflowType = workflowType.toLowerCase();
+  const normalizedDecision = decision.toLowerCase();
+  const amount = Number(refundAmountGbp ?? ticket.refundAmountGbp ?? 0);
+  const tlApprovalRequired = normalizedWorkflowType === 'refund' ? amount > threshold : false;
+
+  // Approval/rejection actions need TL+ permissions
+  if (['approved', 'rejected'].includes(normalizedDecision) && !approverRoles.includes(userRole)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Only TL/Admin can approve or reject refund/replacement workflows',
+    });
+  }
+
+  // If refund exceeds threshold and action is approval, require authorization id
+  if (
+    normalizedWorkflowType === 'refund' &&
+    normalizedDecision === 'approved' &&
+    tlApprovalRequired &&
+    !refundApprovalAuthorizationId
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'refundApprovalAuthorizationId is required for high-value refund approvals',
+    });
+  }
+
+  ticket.refundAmountGbp = amount;
+  ticket.compensationType = compensationType ?? ticket.compensationType;
+  ticket.courierRequired = courierRequired ?? ticket.courierRequired;
+  ticket.returnLabelSent = returnLabelSent ?? ticket.returnLabelSent;
+  ticket.tlApprovalRequired = tlApprovalRequired;
+  ticket.workflowUpdatedAt = new Date();
+
+  if (resolutionType) {
+    ticket.resolutionType = resolutionType;
+  } else if (normalizedWorkflowType === 'refund') {
+    ticket.resolutionType = 'Refund';
+  } else {
+    ticket.resolutionType = 'Replacement';
+  }
+
+  if (normalizedDecision === 'requested') {
+    ticket.status = normalizedWorkflowType === 'refund' ? 'refund_pending' : 'replacement_pending';
+    ticket.tlApproval = tlApprovalRequired ? null : false;
+    ticket.tlApprovedAt = null;
+    ticket.tlApprovedBy = null;
+    ticket.refundApprovalAuthorizationId = null;
+  }
+
+  if (normalizedDecision === 'approved') {
+    ticket.status = normalizedWorkflowType === 'refund' ? 'refund_approved' : 'replacement_approved';
+    ticket.tlApproval = true;
+    ticket.tlApprovedAt = new Date();
+    ticket.tlApprovedBy = userId;
+    ticket.refundApprovalAuthorizationId =
+      refundApprovalAuthorizationId || ticket.refundApprovalAuthorizationId || `AUTH-${Date.now()}`;
+  }
+
+  if (normalizedDecision === 'rejected') {
+    ticket.status = normalizedWorkflowType === 'refund' ? 'refund_rejected' : 'replacement_rejected';
+    ticket.tlApproval = false;
+    ticket.tlApprovedAt = new Date();
+    ticket.tlApprovedBy = userId;
+    ticket.refundApprovalAuthorizationId = null;
+  }
+
+  ticket.lastActivityAt = new Date();
+  await ticket.save();
+
+  await EmailTicketMessage.create({
+    ticketId: ticket.ticketId,
+    organization,
+    senderType: 'system',
+    senderName: 'System',
+    message: `${normalizedWorkflowType.toUpperCase()} workflow ${normalizedDecision} by ${userName}${
+      notes ? ` | Notes: ${notes}` : ''
+    }`,
+    html: `<p><strong>${normalizedWorkflowType.toUpperCase()} workflow ${normalizedDecision} by ${userName}</strong>${
+      notes ? `<br/>Notes: ${notes}` : ''
+    }</p>`,
+  });
+
+  const ticketNamespace = req.app.get('ticketNamespace');
+  if (ticketNamespace && ticketNamespace.emitTicketUpdate) {
+    ticketNamespace.emitTicketUpdate(ticket);
+  }
+
+  res.json({
+    success: true,
+    message: 'Refund/replacement workflow updated successfully',
+    data: ticket,
   });
 });

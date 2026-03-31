@@ -40,6 +40,7 @@ router.post(
 
 router.get('/tickets/:id', authenticateToken, ctrl.getTicket);
 router.put('/tickets/:id/status', authenticateToken, ctrl.updateStatus);
+router.put('/tickets/:id/refund-workflow', authenticateToken, ctrl.updateRefundWorkflow);
 router.put('/tickets/:id/priority', authenticateToken, ctrl.updatePriority);
 router.put('/tickets/:id/assign', authenticateToken, ctrl.assignTicket);
 router.put('/tickets/:id/tags', authenticateToken, ctrl.updateTags);
