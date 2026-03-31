@@ -221,7 +221,7 @@ module.exports = function initCallSocket(io, connectedUsers) {
       console.log("❌ Disconnected:", userId || socket.id);
       if (userId) {
         connectedUsers.delete(userId);
-        socketsByStaff.delete(userId);
+        socketsByUser.delete(userId);
         io.emit("user-status", { userId, is_active: false });
       }
     });

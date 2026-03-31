@@ -241,7 +241,7 @@ const organizationSchema = new mongoose.Schema({
     branding: {
       logo: String,
       favicon: String,
-      primaryColor: { type: String, default: '#4F46E5' },
+      primaryColor: { type: String, default: '#8A4FFF' },
       secondaryColor: { type: String, default: '#10B981' },
       fontFamily: { type: String, default: 'Inter' },
     },

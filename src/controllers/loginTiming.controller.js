@@ -1,6 +1,25 @@
+const mongoose = require('mongoose');
 const LoginTiming = require('../models/LoginTiming');
 const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
+
+const resolveOrganizationObjectId = async (organizationIdentifier) => {
+  if (!organizationIdentifier) {
+    return null;
+  }
+
+  const normalizedValue = String(organizationIdentifier).trim();
+
+  if (mongoose.Types.ObjectId.isValid(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  const organization = await Organization.findOne({ organizationId: normalizedValue })
+    .select('_id organizationId')
+    .lean();
+
+  return organization?._id || null;
+};
 
 // GET login timings for organization
 exports.getLoginTimings = async (req, res) => {
@@ -149,32 +168,44 @@ exports.updateLoginTimings = async (req, res) => {
 // GET login timing status (for login page)
 exports.getLoginTimingStatus = async (req, res) => {
   try {
-    let organizationId =
+    let organizationIdentifier =
       req.query?.organizationId ||
       req.headers?.['x-organization-id'] ||
       req.headers?.['X-Organization-Id'];
 
     // Fallback for single-tenant login pages where org id isn't explicitly passed
-    if (!organizationId) {
+    if (!organizationIdentifier) {
       const fallbackTiming = await LoginTiming.findOne({}).sort({ updatedAt: -1 }).lean();
       if (fallbackTiming?.organizationId) {
-        organizationId = fallbackTiming.organizationId;
+        organizationIdentifier = fallbackTiming.organizationId;
       }
     }
 
     // Secondary fallback via Organization collection (oldest active org)
-    if (!organizationId) {
+    if (!organizationIdentifier) {
       const org = await Organization.findOne({}).sort({ createdAt: 1 }).select('organizationId').lean();
       if (org?.organizationId) {
-        organizationId = org.organizationId;
+        organizationIdentifier = org.organizationId;
       }
     }
 
-    if (!organizationId) {
+    if (!organizationIdentifier) {
       return res.status(200).json({
         status: true,
         message: 'No organization context found',
         data: null,
+        isLoginAllowedNow: true,
+      });
+    }
+
+    const organizationId = await resolveOrganizationObjectId(organizationIdentifier);
+
+    if (!organizationId) {
+      return res.status(200).json({
+        status: true,
+        message: 'No login timing configured',
+        data: null,
+        organizationId: organizationIdentifier,
         isLoginAllowedNow: true,
       });
     }
@@ -186,7 +217,8 @@ exports.getLoginTimingStatus = async (req, res) => {
         status: true,
         message: 'No login timing configured',
         data: null,
-        isLoginAllowed: true, // Default allow
+        organizationId: organizationIdentifier,
+        isLoginAllowedNow: true, // Default allow
       });
     }
 
@@ -200,7 +232,7 @@ exports.getLoginTimingStatus = async (req, res) => {
       status: true,
       message: 'Login timing status retrieved',
       data: loginTiming,
-      organizationId,
+      organizationId: organizationIdentifier,
       isLoginAllowedNow,
     };
 
