@@ -2164,3 +2164,131 @@ exports.deleteQuery = async (req, res) => {
     });
   }
 };
+
+// SLA compliance summary report
+exports.getSlaComplianceReport = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    const allowedRoles = ['QA', 'TL', 'Management', 'Admin', 'SuperAdmin', 'Dev', 'Aggregator'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ status: false, message: 'Not authorized to view SLA report' });
+    }
+
+    const { fromDate, toDate, targetSeconds } = req.query;
+    const benchmarkSeconds = Number(targetSeconds) || Number(process.env.UK_CHAT_FRT_TARGET_SECONDS) || 60;
+
+    const filter = {};
+    if (req.user?.role !== 'SuperAdmin' && req.user?.organizationId) {
+      filter.organizationId = req.user.organizationId;
+    }
+
+    if (fromDate || toDate) {
+      const range = {};
+      if (fromDate) range.$gte = new Date(fromDate);
+      if (toDate) range.$lte = new Date(toDate);
+      filter.createdAt = range;
+    }
+
+    const queries = await Query.find(filter)
+      .select('petitionId status customerName category firstResponseTimeSeconds firstResponseAt slaTargetSeconds isBreached createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const responded = queries.filter((q) => typeof q.firstResponseTimeSeconds === 'number');
+    const withinSla = responded.filter(
+      (q) => q.firstResponseTimeSeconds <= (q.slaTargetSeconds || benchmarkSeconds)
+    );
+    const breached = responded.filter(
+      (q) => q.firstResponseTimeSeconds > (q.slaTargetSeconds || benchmarkSeconds)
+    );
+    const avgFRTSeconds = responded.length
+      ? Math.round(
+          responded.reduce((sum, q) => sum + (q.firstResponseTimeSeconds || 0), 0) / responded.length
+        )
+      : 0;
+
+    return res.status(200).json({
+      status: true,
+      data: {
+        benchmarkSeconds,
+        totals: {
+          totalQueries: queries.length,
+          respondedQueries: responded.length,
+          withinSla: withinSla.length,
+          breached: breached.length,
+          slaPercent: responded.length ? Number(((withinSla.length / responded.length) * 100).toFixed(2)) : 0,
+          avgFRTSeconds,
+        },
+        breachedCases: breached.slice(0, 200).map((q) => ({
+          petitionId: q.petitionId,
+          customerName: q.customerName,
+          category: q.category,
+          status: q.status,
+          firstResponseTimeSeconds: q.firstResponseTimeSeconds,
+          targetSeconds: q.slaTargetSeconds || benchmarkSeconds,
+          createdAt: q.createdAt,
+          firstResponseAt: q.firstResponseAt,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('getSlaComplianceReport error:', error);
+    return res.status(500).json({ status: false, message: 'Failed to fetch SLA report', error: error.message });
+  }
+};
+
+// SLA live breach alerts (unanswered/active queries past FRT target)
+exports.getSlaLiveAlerts = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    const allowedRoles = ['QA', 'TL', 'Management', 'Admin', 'SuperAdmin', 'Dev', 'Aggregator'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ status: false, message: 'Not authorized to view SLA alerts' });
+    }
+
+    const benchmarkSeconds = Number(req.query.targetSeconds) || Number(process.env.UK_CHAT_FRT_TARGET_SECONDS) || 60;
+
+    const filter = {
+      status: { $in: ['Pending', 'Accepted', 'In Progress', 'Transferred'] },
+    };
+    if (req.user?.role !== 'SuperAdmin' && req.user?.organizationId) {
+      filter.organizationId = req.user.organizationId;
+    }
+
+    const activeQueries = await Query.find(filter)
+      .select('petitionId customerName category status createdAt firstResponseAt firstResponseTimeSeconds slaTargetSeconds')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const now = Date.now();
+    const alerts = activeQueries
+      .map((q) => {
+        const target = q.slaTargetSeconds || benchmarkSeconds;
+        const elapsedSeconds = Math.max(0, Math.round((now - new Date(q.createdAt).getTime()) / 1000));
+        const isBreachedLive = !q.firstResponseAt && elapsedSeconds > target;
+        return {
+          petitionId: q.petitionId,
+          customerName: q.customerName,
+          category: q.category,
+          status: q.status,
+          createdAt: q.createdAt,
+          elapsedSeconds,
+          targetSeconds: target,
+          isBreachedLive,
+        };
+      })
+      .filter((item) => item.isBreachedLive);
+
+    return res.status(200).json({
+      status: true,
+      data: {
+        benchmarkSeconds,
+        activeBreaches: alerts,
+        totalActiveBreaches: alerts.length,
+      },
+    });
+  } catch (error) {
+    console.error('getSlaLiveAlerts error:', error);
+    return res.status(500).json({ status: false, message: 'Failed to fetch SLA alerts', error: error.message });
+  }
+};

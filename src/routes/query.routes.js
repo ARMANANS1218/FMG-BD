@@ -17,6 +17,8 @@ const {
   getRecentEscalations,
   downloadEscalationRemarksReport,
   downloadQueryListReport,
+  getSlaComplianceReport,
+  getSlaLiveAlerts,
 } = require('../controllers/query.controller');
 const { validateToken } = require('../utils/validateToken');
 const { authorize } = require('../middleware/tenantAuth');
@@ -33,6 +35,8 @@ router.get('/available-agents', validateToken, getAvailableAgents);
 router.get('/escalations/recent', validateToken, getRecentEscalations);
 router.get('/escalations/report/download', validateToken, downloadEscalationRemarksReport);
 router.get('/report/download', validateToken, downloadQueryListReport);
+router.get('/sla/report', validateToken, getSlaComplianceReport);
+router.get('/sla/alerts', validateToken, getSlaLiveAlerts);
 router.post('/:petitionId/accept', validateToken, acceptQuery);
 // Submit a transfer request (recipient must accept)
 router.post('/:petitionId/transfer', validateToken, transferQuery);

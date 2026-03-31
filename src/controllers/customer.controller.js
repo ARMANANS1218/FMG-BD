@@ -4,14 +4,39 @@ const Plan = require('../models/Plan');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const xlsx = require('xlsx');
+const {
+  normalizeUkPhone,
+  isValidUkPhone,
+  normalizeUkPostcode,
+  isValidUkPostcode,
+} = require('../utils/ukValidation');
 
 // REGISTER
 exports.customerRegister = async (req, res) => {
-  const { name, email, password, mobile, organizationId } = req.body;
+  const {
+    name,
+    email,
+    password,
+    mobile,
+    organizationId,
+    preferredContactMethod,
+    consentCaptured,
+    vulnerableCustomerFlag,
+    fmcgCustomerType,
+  } = req.body;
 
   try {
+    const normalizedMobile = mobile ? normalizeUkPhone(mobile) : null;
+
+    if (normalizedMobile && !isValidUkPhone(normalizedMobile)) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid UK phone number. Use +44 format.',
+      });
+    }
+
     const existingUser = await Customer.findOne({
-      $or: [{ email }, { mobile }],
+      $or: [{ email }, { mobile: normalizedMobile }],
     });
 
     if (existingUser) {
@@ -31,9 +56,14 @@ exports.customerRegister = async (req, res) => {
       name,
       user_name: email.split('@')[0],
       email,
-      mobile,
+      mobile: normalizedMobile,
       password: hashedPassword,
       customerType: 'registered',
+      preferredContactMethod: preferredContactMethod || 'Chat',
+      consentCaptured: Boolean(consentCaptured),
+      consentTimestamp: consentCaptured ? new Date() : null,
+      vulnerableCustomerFlag: Boolean(vulnerableCustomerFlag),
+      fmcgCustomerType: fmcgCustomerType || 'End Consumer',
     });
 
     res.status(201).json({
@@ -176,6 +206,14 @@ exports.createCustomer = async (req, res) => {
       email,
       mobile,
       alternatePhone,
+      fmcgCustomerType,
+      caseId,
+      contactId,
+      preferredContactMethod,
+      consentCaptured,
+      consentTimestamp,
+      vulnerableCustomerFlag,
+      dataRetentionTimerMonths,
       governmentId,
       address,
       planType,
@@ -189,6 +227,37 @@ exports.createCustomer = async (req, res) => {
       notes,
       profileImage,
     } = req.body;
+
+    const normalizedMobile = mobile ? normalizeUkPhone(mobile) : null;
+    const normalizedAlternatePhone = alternatePhone ? normalizeUkPhone(alternatePhone) : null;
+
+    if (normalizedMobile && !isValidUkPhone(normalizedMobile)) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid UK mobile number. Use +44 format.',
+      });
+    }
+
+    if (normalizedAlternatePhone && !isValidUkPhone(normalizedAlternatePhone)) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid UK alternate phone number. Use +44 format.',
+      });
+    }
+
+    const normalizedAddress = address
+      ? {
+          ...address,
+          postalCode: address.postalCode ? normalizeUkPostcode(address.postalCode) : address.postalCode,
+        }
+      : address;
+
+    if (normalizedAddress?.postalCode && !isValidUkPostcode(normalizedAddress.postalCode)) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid UK postcode format.',
+      });
+    }
 
     // Check if email or mobile already exists
     const existing = await Customer.findOne({
@@ -253,13 +322,21 @@ exports.createCustomer = async (req, res) => {
       name,
       user_name: email.split('@')[0],
       email,
-      mobile,
-      alternatePhone,
+      mobile: normalizedMobile,
+      alternatePhone: normalizedAlternatePhone,
       password: hashedPassword,
       visiblePassword: defaultPassword,
       customerType: 'registered',
+      fmcgCustomerType: fmcgCustomerType || 'End Consumer',
+      caseId: caseId || null,
+      contactId: contactId || null,
+      preferredContactMethod: preferredContactMethod || 'Chat',
+      consentCaptured: Boolean(consentCaptured),
+      consentTimestamp: consentCaptured ? consentTimestamp || new Date() : null,
+      vulnerableCustomerFlag: Boolean(vulnerableCustomerFlag),
+      dataRetentionTimerMonths: dataRetentionTimerMonths || 24,
       governmentId,
-      address,
+      address: normalizedAddress,
       planType,
       billingType,
       billingCycle,
@@ -338,6 +415,14 @@ exports.updateCustomerDetails = async (req, res) => {
       email,
       mobile,
       alternatePhone,
+      fmcgCustomerType,
+      caseId,
+      contactId,
+      preferredContactMethod,
+      consentCaptured,
+      consentTimestamp,
+      vulnerableCustomerFlag,
+      dataRetentionTimerMonths,
       governmentId,
       address,
       planType,
@@ -350,13 +435,47 @@ exports.updateCustomerDetails = async (req, res) => {
       profileImage,
     } = req.body;
 
+    const normalizedMobile = mobile ? normalizeUkPhone(mobile) : null;
+    const normalizedAlternatePhone = alternatePhone ? normalizeUkPhone(alternatePhone) : null;
+
+    if (normalizedMobile && !isValidUkPhone(normalizedMobile)) {
+      return res.status(400).json({ status: false, message: 'Invalid UK mobile number. Use +44 format.' });
+    }
+
+    if (normalizedAlternatePhone && !isValidUkPhone(normalizedAlternatePhone)) {
+      return res.status(400).json({ status: false, message: 'Invalid UK alternate phone number. Use +44 format.' });
+    }
+
+    const normalizedAddress = address
+      ? {
+          ...address,
+          postalCode: address.postalCode ? normalizeUkPostcode(address.postalCode) : address.postalCode,
+        }
+      : address;
+
+    if (normalizedAddress?.postalCode && !isValidUkPostcode(normalizedAddress.postalCode)) {
+      return res.status(400).json({ status: false, message: 'Invalid UK postcode format.' });
+    }
+
     // Update fields
     if (name) customer.name = name;
     if (email) customer.email = email;
-    if (mobile) customer.mobile = mobile;
-    if (alternatePhone !== undefined) customer.alternatePhone = alternatePhone;
+    if (normalizedMobile) customer.mobile = normalizedMobile;
+    if (alternatePhone !== undefined) customer.alternatePhone = normalizedAlternatePhone;
+    if (fmcgCustomerType !== undefined) customer.fmcgCustomerType = fmcgCustomerType;
+    if (caseId !== undefined) customer.caseId = caseId;
+    if (contactId !== undefined) customer.contactId = contactId;
+    if (preferredContactMethod !== undefined) customer.preferredContactMethod = preferredContactMethod;
+    if (consentCaptured !== undefined) {
+      customer.consentCaptured = Boolean(consentCaptured);
+      customer.consentTimestamp = customer.consentCaptured
+        ? consentTimestamp || customer.consentTimestamp || new Date()
+        : null;
+    }
+    if (vulnerableCustomerFlag !== undefined) customer.vulnerableCustomerFlag = Boolean(vulnerableCustomerFlag);
+    if (dataRetentionTimerMonths !== undefined) customer.dataRetentionTimerMonths = dataRetentionTimerMonths;
     if (governmentId) customer.governmentId = governmentId;
-    if (address) customer.address = address;
+    if (normalizedAddress) customer.address = normalizedAddress;
     if (planType !== undefined) customer.planType = planType;
     if (billingType !== undefined) customer.billingType = billingType;
     if (billingCycle !== undefined) customer.billingCycle = billingCycle;

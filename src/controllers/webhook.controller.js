@@ -112,10 +112,25 @@ exports.createGuestConversation = async (req, res) => {
     const normalizedPriority = allowedPriorities.includes((priority || '').trim())
       ? priority.trim()
       : 'Medium';
-    const allowedDepartments = ['Accounts', 'Technicals', 'Billings', 'Supports'];
+    const allowedDepartments = [
+      'Quality Issue',
+      'Damaged Product',
+      'Missing Item',
+      'Expired Product',
+      'Allergy Concern',
+      'Packaging Issue',
+      'Refund Request',
+      'Replacement Request',
+      'General Inquiry',
+      // legacy categories (backward compatibility)
+      'Accounts',
+      'Technicals',
+      'Billings',
+      'Supports',
+    ];
     const normalizedDepartment = allowedDepartments.includes((department || category || '').trim())
       ? (department || category).trim()
-      : 'Supports';
+      : 'General Inquiry';
 
     // Generate petition ID (format: PET-TIMESTAMP-RANDOM)
     const petitionId = `PET-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -138,7 +153,7 @@ exports.createGuestConversation = async (req, res) => {
       customerEmail,
       customerPhone: guestPhone || 'Not provided',
       isGuestCustomer: isGuest,
-      subject: 'Chat Inquiry',
+      subject: 'FMCG Chat Inquiry',
       category: normalizedDepartment,
       priority: normalizedPriority,
       status: 'Pending',
