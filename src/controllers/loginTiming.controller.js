@@ -1,6 +1,28 @@
 const LoginTiming = require('../models/LoginTiming');
 const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
+const mongoose = require('mongoose');
+
+const resolveOrganizationObjectId = async (rawOrganizationId) => {
+  const value = Array.isArray(rawOrganizationId)
+    ? rawOrganizationId[0]
+    : rawOrganizationId;
+
+  const normalized = typeof value === 'string' ? value.trim() : value;
+  if (!normalized) return null;
+
+  // Already a MongoDB ObjectId
+  if (mongoose.isValidObjectId(normalized)) {
+    return normalized;
+  }
+
+  // Support business org IDs like ORG-001
+  const org = await Organization.findOne({ organizationId: normalized })
+    .select('_id')
+    .lean();
+
+  return org?._id ? org._id.toString() : null;
+};
 
 // GET login timings for organization
 exports.getLoginTimings = async (req, res) => {
@@ -149,24 +171,34 @@ exports.updateLoginTimings = async (req, res) => {
 // GET login timing status (for login page)
 exports.getLoginTimingStatus = async (req, res) => {
   try {
-    let organizationId =
+    const requestedOrganizationId =
       req.query?.organizationId ||
       req.headers?.['x-organization-id'] ||
       req.headers?.['X-Organization-Id'];
 
+    let organizationId = await resolveOrganizationObjectId(requestedOrganizationId);
+
     // Fallback for single-tenant login pages where org id isn't explicitly passed
     if (!organizationId) {
-      const fallbackTiming = await LoginTiming.findOne({}).sort({ updatedAt: -1 }).lean();
+      const fallbackTiming = await LoginTiming.findOne({})
+        .sort({ updatedAt: -1 })
+        .select('organizationId')
+        .lean();
+
       if (fallbackTiming?.organizationId) {
-        organizationId = fallbackTiming.organizationId;
+        organizationId = fallbackTiming.organizationId.toString();
       }
     }
 
-    // Secondary fallback via Organization collection (oldest active org)
+    // Secondary fallback via Organization collection (oldest created org)
     if (!organizationId) {
-      const org = await Organization.findOne({}).sort({ createdAt: 1 }).select('organizationId').lean();
-      if (org?.organizationId) {
-        organizationId = org.organizationId;
+      const org = await Organization.findOne({})
+        .sort({ createdAt: 1 })
+        .select('_id')
+        .lean();
+
+      if (org?._id) {
+        organizationId = org._id.toString();
       }
     }
 
@@ -201,6 +233,7 @@ exports.getLoginTimingStatus = async (req, res) => {
       message: 'Login timing status retrieved',
       data: loginTiming,
       organizationId,
+      requestedOrganizationId: requestedOrganizationId || null,
       isLoginAllowedNow,
     };
 
