@@ -1,6 +1,7 @@
 const LoginTiming = require('../models/LoginTiming');
 const Staff = require('../models/Staff');
 const Organization = require('../models/Organization');
+const mongoose = require('mongoose');
 
 // GET login timings for organization
 exports.getLoginTimings = async (req, res) => {
@@ -154,6 +155,18 @@ exports.getLoginTimingStatus = async (req, res) => {
       req.headers?.['x-organization-id'] ||
       req.headers?.['X-Organization-Id'];
 
+    if (organizationId && !mongoose.Types.ObjectId.isValid(organizationId)) {
+      const org = await Organization.findOne({
+        $or: [{ organizationId }, { name: organizationId }],
+      })
+        .select('_id')
+        .lean();
+
+      if (org?._id) {
+        organizationId = org._id;
+      }
+    }
+
     // Fallback for single-tenant login pages where org id isn't explicitly passed
     if (!organizationId) {
       const fallbackTiming = await LoginTiming.findOne({}).sort({ updatedAt: -1 }).lean();
@@ -164,9 +177,9 @@ exports.getLoginTimingStatus = async (req, res) => {
 
     // Secondary fallback via Organization collection (oldest active org)
     if (!organizationId) {
-      const org = await Organization.findOne({}).sort({ createdAt: 1 }).select('organizationId').lean();
-      if (org?.organizationId) {
-        organizationId = org.organizationId;
+      const org = await Organization.findOne({}).sort({ createdAt: 1 }).select('_id').lean();
+      if (org?._id) {
+        organizationId = org._id;
       }
     }
 
