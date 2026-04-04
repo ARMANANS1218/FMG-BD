@@ -3,6 +3,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const fs = require("fs");
 const helmet = require("helmet");
 const cors = require("cors");
 const hpp = require("hpp");
@@ -439,6 +440,23 @@ app.use("/api/v1/agent-performance", agentPerformanceRoutes);
 app.use("/api/v1/forgot-password", forgotPasswordRoutes);
 app.use("/api/v1/invoices", require("./routes/invoice.routes"));
 app.use("/api/v1/plans", planRoutes);
+
+// ✅ Serve frontend SPA (FMG-FD) under /FMG and support deep links like /FMG/login
+const frontendDistPath = path.resolve(__dirname, "../../FMG-FD/dist");
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
+
+if (fs.existsSync(frontendIndexPath)) {
+  app.use("/FMG", express.static(frontendDistPath));
+
+  // SPA fallback for browser refresh/direct navigation
+  app.get(/^\/FMG(?:\/.*)?$/, (req, res) => {
+    res.sendFile(frontendIndexPath);
+  });
+
+  console.log(`📦 Frontend static enabled at /FMG -> ${frontendDistPath}`);
+} else {
+  console.warn(`⚠️ Frontend dist not found at ${frontendDistPath}. /FMG routes will not be served by backend.`);
+}
 
 // ✅ Health Check
 app.get("/", (req, res) => {
