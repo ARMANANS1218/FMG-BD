@@ -220,9 +220,22 @@ module.exports = function initCallSocket(io, connectedUsers) {
     socket.on("disconnect", () => {
       console.log("❌ Disconnected:", userId || socket.id);
       if (userId) {
-        connectedUsers.delete(userId);
-        socketsByStaff.delete(userId);
-        io.emit("user-status", { userId, is_active: false });
+        // Prevent stale disconnects from clearing a newer active socket for same user
+        const activeSocketId = connectedUsers.get(userId);
+        const mappedSocket = socketsByUser.get(userId);
+
+        if (activeSocketId === socket.id) {
+          connectedUsers.delete(userId);
+        }
+
+        if (mappedSocket?.id === socket.id) {
+          socketsByUser.delete(userId);
+        }
+
+        // Emit offline only when the currently tracked socket disconnects
+        if (activeSocketId === socket.id) {
+          io.emit("user-status", { userId, is_active: false });
+        }
       }
     });
   });
